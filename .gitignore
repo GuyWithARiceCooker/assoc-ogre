@@ -1,0 +1,15 @@
+# CMake / build
+build/
+cmake-build-*/
+out/
+.cache/
+compile_commands.json
+
+# IDE
+*.sublime-workspace
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
