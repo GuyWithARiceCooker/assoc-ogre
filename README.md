@@ -19,6 +19,14 @@ cmake --build build
 
 A futtatáshoz a generált `build/plugins.cfg` és `build/resources.cfg` kell; indítás: `build/assoc` a build könyvtárból, vagy a projekt `run-mac.sh` (ha a gépen passzol az út).
 
+## GitHub (új repó + push)
+
+1. Egy olyan terminálban, ahol tudod használni a `gh` böngészős bejelentkezését, egyszer: `gh auth login`  
+   (PAT-vel: `echo "$GITHUB_TOKEN" | gh auth login --with-token` — a tokennek kell joga repót hozni és pusholni.)
+2. A repó gyökeréből: `./scripts/github-create-and-push.sh`  
+   A szkript már nincs `origin` esetén létrehozza a **publikus** `assoc-ogre` repót a fiókodon és feltolja a `main`-t.  
+   Szervezet alá: `export GITHUB_ORG=szervezet_neve` (és szükséges a jog a repóhoz), majd ugyanígy a szkript.
+
 ## Licenc
 
 A projektkód a szerzőé; az Ogre3D / minta módik külön licencelésűek (lásd az Ogre SDK / Samples dokumentációját).
