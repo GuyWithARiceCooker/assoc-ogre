@@ -10,6 +10,13 @@ visszafogottan fusson.
 - Ogre3D 14.x telepitve (CMake `OGREConfig.cmake` elerheto)
 - SDL2
 
+Ha nincs meg Ogre, a repo tud helyi, minimalis Ogre 14 SDK-t epiteni
+`.deps/ogre-14` ala:
+
+```bash
+./scripts/install-ogre-local.sh
+```
+
 A `CMakeLists.txt` alapertelmezett Ogre prefixe `/usr`, de megadhatod kezzel:
 
 ```bash
@@ -24,6 +31,13 @@ Vagy Arch/sajat Ogre prefix eseten:
 ./scripts/build-arch.sh /usr
 ```
 
+Helyi Ogre install utan:
+
+```bash
+OGRE_PLUGIN_DIR=.deps/ogre-14/lib/OGRE ./scripts/build-arch.sh .deps/ogre-14
+./scripts/run-linux.sh .deps/ogre-14
+```
+
 A script az elso argumentumot `OGRE_SDK` prefixkent hasznalja, es ha nem adsz meg
 `OGRE_PLUGIN_DIR` valtozot, megprobalja a szokasos `lib/OGRE`, `lib64/OGRE`,
 `lib/OGRE-14` konyvtarakat.
@@ -33,6 +47,12 @@ A futtatashoz a generalt `build/plugins.cfg` es `build/resources.cfg` kell:
 ```bash
 cd build
 ./assoc
+```
+
+Ha helyi `.deps/ogre-14` SDK-val forditottad, hasznald inkabb:
+
+```bash
+./scripts/run-linux.sh .deps/ogre-14
 ```
 
 Billentyuk:
@@ -46,7 +66,9 @@ Archon tipikus csomagok:
 
 ```bash
 sudo pacman -S --needed base-devel cmake sdl2
-# Ogre3D 14 telepitesedtol fuggoen: disztro/AUR/sajat build.
+# Ogre3D 14 telepitesedtol fuggoen: disztro/AUR/sajat build,
+# vagy a repo helyi installer scriptje:
+./scripts/install-ogre-local.sh
 ```
 
 Ha az Ogre sajat prefixbe kerult:
