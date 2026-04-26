@@ -22,12 +22,16 @@ set(OGRE_SDK "/Users/tomi/ogre-sdk" CACHE PATH "Ogre3D install prefix")
 # Minta-média (hálók, .material): a forrásfa Samples/Media, nem kerül a „Release” Ogre-telepítésbe
 set(OGRE_SAMPLES_MEDIA "/Users/tomi/ogresrc/Samples/Media" CACHE PATH "OGRE sample meshes/materials path")
 
-if(NOT EXISTS "${OGRE_SDK}/CMake/OGREConfig.cmake")
-  message(FATAL_ERROR "Nem találom az Ogre SDK-t: ${OGRE_SDK}/CMake/OGREConfig.cmake. Előbb fordítsd/telepítsd az Ogre3D-t (pl. v14.3.2).")
+if(EXISTS "${OGRE_SDK}/lib/OGRE/cmake/OGREConfig.cmake")
+  set(OGRE_CONFIG_DIR "${OGRE_SDK}/lib/OGRE/cmake")
+elseif(EXISTS "${OGRE_SDK}/CMake/OGREConfig.cmake")
+  set(OGRE_CONFIG_DIR "${OGRE_SDK}/CMake")
+else()
+  message(FATAL_ERROR "Nem találom az Ogre SDK-t: ${OGRE_SDK}/CMake/OGREConfig.cmake vagy ${OGRE_SDK}/lib/OGRE/cmake/OGREConfig.cmake. Előbb fordítsd/telepítsd az Ogre3D-t (pl. v14.3.2).")
 endif()
 
 list(APPEND CMAKE_PREFIX_PATH "${OGRE_SDK}" "/usr/local/opt/sdl2")
-set(OGRE_DIR "${OGRE_SDK}/CMake")
+set(OGRE_DIR "${OGRE_CONFIG_DIR}")
 
 find_package(OGRE REQUIRED COMPONENTS Bites CONFIG)
 

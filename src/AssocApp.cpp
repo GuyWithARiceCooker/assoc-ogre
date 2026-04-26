@@ -18,7 +18,7 @@
 #include "OgreInput.h"
 #include "OgreRTShaderSystem.h"
 #include "OgrePlane.h"
-#include "OgreSubentity.h"
+#include "OgreSubEntity.h"
 #include "OgreTechnique.h"
 #include "OgreFont.h"
 #include "OgreFontManager.h"
