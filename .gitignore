@@ -2,6 +2,7 @@
 build/
 cmake-build-*/
 out/
+.deps/
 .cache/
 compile_commands.json
 

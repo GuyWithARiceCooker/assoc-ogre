@@ -148,6 +148,33 @@ public:
     {
     }
 
+    bool oneTimeConfig() override
+    {
+        Ogre::Root* const root = getRoot();
+        const Ogre::RenderSystemList& renderers = root->getAvailableRenderers();
+        if (renderers.empty())
+        {
+            Ogre::LogManager::getSingleton().logError("No RenderSystems available");
+            return false;
+        }
+
+        Ogre::RenderSystem* rs = root->getRenderSystemByName("OpenGL 3+ Rendering Subsystem");
+        if (!rs)
+        {
+            rs = renderers.front();
+        }
+        root->setRenderSystem(rs);
+
+        setRenderOption(rs, "Full Screen", "No");
+        setRenderOption(rs, "Video Mode", "1024 x 640");
+        setRenderOption(rs, "FSAA", "0");
+        setRenderOption(rs, "VSync", "Yes");
+        setRenderOption(rs, "sRGB Gamma Conversion", "No");
+        setRenderOption(rs, "RTT Preferred Mode", "FBO");
+        setRenderOption(rs, "Reversed Z", "No");
+        return true;
+    }
+
     void setup() override
     {
         OgreBites::ApplicationContext::setup();
@@ -262,6 +289,15 @@ public:
     }
 
 private:
+    void setRenderOption(Ogre::RenderSystem* const rs, const Ogre::String& name, const Ogre::String& value)
+    {
+        const Ogre::ConfigOptionMap& options = rs->getConfigOptions();
+        if (options.find(name) != options.end())
+        {
+            rs->setConfigOption(name, value);
+        }
+    }
+
     void createMaterials()
     {
         makeMaterial("assoc/water", Ogre::ColourValue(0.18f, 0.43f, 0.62f, 0.72f),
