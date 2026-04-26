@@ -1,129 +1,140 @@
 /**
- * ============================================================================
- * assoc (AssocApp.cpp) — Ogre3D 14 + Bites + RTShader: 3D jelenet, szöveg **nem** overlay,
- * hanem a jelenetben: betűnként külön `ManualObject` (quad + font-UV, SdkTrays/Caption ttf)
- * ============================================================================
+ * assoc — Ogre3D 14 + Bites: konnyu, asset-mentes modularis napelemes katamaran.
  *
- * FŐ ADATFOLYAM
- * -------------
- * `initApp` → `locateResources` / `loadResources` (Essential: SdkTrays.zip → font) →
- * `setup()`: SceneManager, RTSS, 3D szöveg: `TVC_DIFFUSE` + arany `ManualObject::colour`, TUS nearest+clamp,
- * `setAutoTracking` a kamera csomópontra, hogy a felirat a kamerába nézzen.
- * Esc → kilépés.
- * ============================================================================
+ * Cel: fusson Linuxon/Archon es regi, 4 GB RAM-os MacBookon is. Ezert minden
+ * lathato elem ManualObject vagy egyszeru Ogre plane: nincs kulso mesh, nincs
+ * textura, nincs draga post-process. A hajo vizen uszik, lassan halad/billeg,
+ * Space billentyuvel a harom test "szetdokkolhato".
  */
 
 #include "Ogre.h"
 #include "OgreApplicationContext.h"
 #include "OgreInput.h"
-#include "OgreRTShaderSystem.h"
 #include "OgrePlane.h"
-#include "OgreSubentity.h"
+#include "OgreRTShaderSystem.h"
 #include "OgreTechnique.h"
-#include "OgreFont.h"
-#include "OgreFontManager.h"
 #include "OgreManualObject.h"
-#include "OgreMovableObject.h"
+#include "OgreMaterialManager.h"
 #include "OgreResourceGroupManager.h"
-#include "OgreTextureUnitState.h"
 
-#include <cstdint>
-#include <memory>
+#include <algorithm>
+#include <array>
+#include <cmath>
 #include <vector>
 
 namespace
 {
-    /** A `OgreBites::TextAreaOverlayElement` lépésképlete (overlay), világ-méretre `h` magassággal. */
-    Ogre::Real measure3DLineWidth(Ogre::Font& font, const std::vector<std::uint32_t>& cps, Ogre::Real h)
+    constexpr Ogre::Real kWaterY = 0.0f;
+
+    Ogre::MaterialPtr makeMaterial(const Ogre::String& name, const Ogre::ColourValue& diffuse,
+        const Ogre::ColourValue& selfIllumination = Ogre::ColourValue::Black, const bool transparent = false)
     {
-        Ogre::Real cursor{0.0F};
-        for (std::uint32_t const code : cps)
+        Ogre::MaterialPtr mat = Ogre::MaterialManager::getSingleton().create(
+            name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+        Ogre::Pass* pass = mat->getTechnique(0)->getPass(0);
+        pass->setDiffuse(diffuse);
+        pass->setAmbient(diffuse * 0.55f);
+        pass->setSpecular(0.55f, 0.62f, 0.7f, 1.0f);
+        pass->setShininess(38.0f);
+        pass->setSelfIllumination(selfIllumination);
+        if (transparent)
         {
-            if (code == static_cast<std::uint32_t>(' '))
-            {
-                cursor += font.getGlyphInfo(code).advance * h;
-                continue;
-            }
-            Ogre::GlyphInfo const& g = font.getGlyphInfo(code);
-            if (g.uvRect.isNull())
-            {
-                cursor += (g.advance - g.bearing) * h;
-                continue;
-            }
-            cursor += g.advance * h;
+            pass->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+            pass->setDepthWriteEnabled(false);
         }
-        return cursor;
+        return mat;
     }
 
-    /**
-     * Egy sorbetűnként: külön `ManualObject` (2× háromszög) + `SceneNode` a szülő alatt.
-     * Lokal: X jobbra, Y felfelé, Z=0; a kamera felé a szülő `setAutoTracking` forgatja a sort.
-     */
-    /** Arany tónus a glyph textúrával; minden csúcson `colour`, különben (0,0,0) diffúz → fekete. */
-    void add3DTextLine(Ogre::SceneManager* const scene, Ogre::SceneNode* const lineRoot,
-        Ogre::String const& namePrefix, Ogre::Font& font, Ogre::Material const& textMat, Ogre::String const& lineUtf8,
-        Ogre::Real const emHeight, Ogre::uint32& nextId)
+    void pushQuad(Ogre::ManualObject* mo, const Ogre::Vector3& a, const Ogre::Vector3& b,
+        const Ogre::Vector3& c, const Ogre::Vector3& d, const Ogre::Vector3& normal)
     {
-        font.load();
-        std::vector<std::uint32_t> const cps{Ogre::utftoc32(lineUtf8)};
-        Ogre::Real const halfWidth = measure3DLineWidth(font, cps, emHeight) * 0.5F;
-        Ogre::Real cursorX{-halfWidth};
+        mo->position(a);
+        mo->normal(normal);
+        mo->textureCoord(0.0f, 0.0f);
+        mo->position(b);
+        mo->normal(normal);
+        mo->textureCoord(1.0f, 0.0f);
+        mo->position(c);
+        mo->normal(normal);
+        mo->textureCoord(1.0f, 1.0f);
 
-        for (std::uint32_t const code : cps)
+        mo->position(a);
+        mo->normal(normal);
+        mo->textureCoord(0.0f, 0.0f);
+        mo->position(c);
+        mo->normal(normal);
+        mo->textureCoord(1.0f, 1.0f);
+        mo->position(d);
+        mo->normal(normal);
+        mo->textureCoord(0.0f, 1.0f);
+    }
+
+    Ogre::ManualObject* createBox(Ogre::SceneManager* scene, const Ogre::String& name,
+        const Ogre::Vector3& size, const Ogre::String& material)
+    {
+        const Ogre::Real hx = size.x * 0.5f;
+        const Ogre::Real hy = size.y * 0.5f;
+        const Ogre::Real hz = size.z * 0.5f;
+        Ogre::ManualObject* mo = scene->createManualObject(name);
+        mo->begin(material, Ogre::RenderOperation::OT_TRIANGLE_LIST);
+        pushQuad(mo, {-hx, -hy, hz}, {hx, -hy, hz}, {hx, hy, hz}, {-hx, hy, hz}, Ogre::Vector3::UNIT_Z);
+        pushQuad(mo, {hx, -hy, -hz}, {-hx, -hy, -hz}, {-hx, hy, -hz}, {hx, hy, -hz}, Ogre::Vector3::NEGATIVE_UNIT_Z);
+        pushQuad(mo, {-hx, hy, hz}, {hx, hy, hz}, {hx, hy, -hz}, {-hx, hy, -hz}, Ogre::Vector3::UNIT_Y);
+        pushQuad(mo, {-hx, -hy, -hz}, {hx, -hy, -hz}, {hx, -hy, hz}, {-hx, -hy, hz}, Ogre::Vector3::NEGATIVE_UNIT_Y);
+        pushQuad(mo, {hx, -hy, hz}, {hx, -hy, -hz}, {hx, hy, -hz}, {hx, hy, hz}, Ogre::Vector3::UNIT_X);
+        pushQuad(mo, {-hx, -hy, -hz}, {-hx, -hy, hz}, {-hx, hy, hz}, {-hx, hy, -hz}, Ogre::Vector3::NEGATIVE_UNIT_X);
+        mo->end();
+        return mo;
+    }
+
+    Ogre::ManualObject* createTaperedHull(Ogre::SceneManager* scene, const Ogre::String& name,
+        const Ogre::String& material)
+    {
+        const Ogre::Real length = 74.0f;
+        const Ogre::Real width = 8.0f;
+        const Ogre::Real height = 7.0f;
+        const Ogre::Real bow = length * 0.5f;
+        const Ogre::Real stern = -length * 0.5f;
+        const Ogre::Real mid = 0.0f;
+        const Ogre::Real top = height * 0.5f;
+        const Ogre::Real keel = -height * 0.5f;
+
+        std::array<Ogre::Vector3, 8> v{{
+            {stern, top, width * 0.45f}, {mid, top + 1.1f, width * 0.5f}, {bow, top, 0.0f},
+            {stern, top, -width * 0.45f}, {mid, top + 1.1f, -width * 0.5f}, {bow, top, 0.0f},
+            {stern + 4.0f, keel, 0.0f}, {mid + 10.0f, keel - 1.0f, 0.0f}
+        }};
+
+        Ogre::ManualObject* mo = scene->createManualObject(name);
+        mo->begin(material, Ogre::RenderOperation::OT_TRIANGLE_LIST);
+        pushQuad(mo, v[0], v[1], v[4], v[3], Ogre::Vector3::UNIT_Y);
+        pushQuad(mo, v[0], v[6], v[7], v[1], Ogre::Vector3(0.0f, 0.35f, 0.94f).normalisedCopy());
+        pushQuad(mo, v[4], v[7], v[6], v[3], Ogre::Vector3(0.0f, 0.35f, -0.94f).normalisedCopy());
+        pushQuad(mo, v[1], v[7], v[2], v[2], Ogre::Vector3(0.8f, 0.2f, 0.0f).normalisedCopy());
+        pushQuad(mo, v[4], v[5], v[7], v[7], Ogre::Vector3(0.8f, 0.2f, 0.0f).normalisedCopy());
+        pushQuad(mo, v[0], v[3], v[6], v[6], Ogre::Vector3::NEGATIVE_UNIT_X);
+        mo->end();
+        return mo;
+    }
+
+    Ogre::ManualObject* createDisc(Ogre::SceneManager* scene, const Ogre::String& name, const Ogre::Real radius,
+        const Ogre::String& material, const unsigned segments = 48U)
+    {
+        Ogre::ManualObject* mo = scene->createManualObject(name);
+        mo->begin(material, Ogre::RenderOperation::OT_TRIANGLE_LIST);
+        for (unsigned i = 0; i < segments; ++i)
         {
-            if (code == static_cast<std::uint32_t>('\n'))
-            {
-                break;
-            }
-            if (code == static_cast<std::uint32_t>(' '))
-            {
-                cursorX += font.getGlyphInfo(code).advance * emHeight;
-                continue;
-            }
-
-            Ogre::GlyphInfo const& g = font.getGlyphInfo(code);
-            if (g.uvRect.isNull())
-            {
-                cursorX += (g.advance - g.bearing) * emHeight;
-                continue;
-            }
-
-            Ogre::Real const w = g.aspectRatio * emHeight;
-            Ogre::FloatRect const& uv{g.uvRect};
-            Ogre::Real const x0{cursorX + g.bearing * emHeight};
-
-            Ogre::ManualObject* const mo{scene->createManualObject(namePrefix + Ogre::StringConverter::toString(nextId))};
-            ++nextId;
-            mo->begin(
-                textMat.getName(), Ogre::RenderOperation::OT_TRIANGLE_LIST, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-            Ogre::Real const yTop{0.0F};
-            Ogre::Real const yBot{yTop - emHeight};
-            // `position` → `colour` → `uv`: TVC_DIFFUSE; a +Z oldal, szülő `setAutoTracking` forgat.
-            Ogre::ColourValue const gold{0.99f, 0.86f, 0.2f, 1.0f};
-            mo->position(x0, yTop, 0.0F);
-            mo->colour(gold);
-            mo->textureCoord(uv.left, uv.top);
-            mo->position(x0, yBot, 0.0F);
-            mo->colour(gold);
-            mo->textureCoord(uv.left, uv.bottom);
-            mo->position(x0 + w, yTop, 0.0F);
-            mo->colour(gold);
-            mo->textureCoord(uv.right, uv.top);
-            mo->position(x0 + w, yTop, 0.0F);
-            mo->colour(gold);
-            mo->textureCoord(uv.right, uv.top);
-            mo->position(x0, yBot, 0.0F);
-            mo->colour(gold);
-            mo->textureCoord(uv.left, uv.bottom);
-            mo->position(x0 + w, yBot, 0.0F);
-            mo->colour(gold);
-            mo->textureCoord(uv.right, uv.bottom);
-            mo->end();
-            Ogre::SceneNode* const letterNode{lineRoot->createChildSceneNode(
-                namePrefix + "node_" + Ogre::StringConverter::toString(nextId - 1))};
-            letterNode->attachObject(mo);
-            cursorX += (g.advance - g.bearing) * emHeight;
+            const Ogre::Real a0 = Ogre::Math::TWO_PI * static_cast<Ogre::Real>(i) / static_cast<Ogre::Real>(segments);
+            const Ogre::Real a1 = Ogre::Math::TWO_PI * static_cast<Ogre::Real>(i + 1U) / static_cast<Ogre::Real>(segments);
+            mo->position(0.0f, 0.0f, 0.0f);
+            mo->normal(Ogre::Vector3::UNIT_Z);
+            mo->position(radius * Ogre::Math::Cos(a0), radius * Ogre::Math::Sin(a0), 0.0f);
+            mo->normal(Ogre::Vector3::UNIT_Z);
+            mo->position(radius * Ogre::Math::Cos(a1), radius * Ogre::Math::Sin(a1), 0.0f);
+            mo->normal(Ogre::Vector3::UNIT_Z);
         }
+        mo->end();
+        return mo;
     }
 } // namespace
 
@@ -146,151 +157,49 @@ public:
         mScene = root->createSceneManager();
         Ogre::RTShader::ShaderGenerator::getSingleton().addSceneManager(mScene);
 
-        mScene->setAmbientLight(Ogre::ColourValue(0.1f, 0.12f, 0.18f));
+        createMaterials();
+
+        mScene->setAmbientLight(Ogre::ColourValue(0.18f, 0.18f, 0.22f));
 
         Ogre::Light* key = mScene->createLight("key");
         key->setType(Ogre::Light::LT_DIRECTIONAL);
         Ogre::SceneNode* kNode = mScene->getRootSceneNode()->createChildSceneNode("keyNode");
-        kNode->setDirection(Ogre::Vector3(-0.2f, -0.7f, -0.4f).normalisedCopy());
+        kNode->setDirection(Ogre::Vector3(-0.38f, -0.62f, -0.44f).normalisedCopy());
         kNode->attachObject(key);
-        key->setDiffuseColour(1.0f, 0.97f, 0.9f);
+        key->setDiffuseColour(1.0f, 0.78f, 0.52f);
 
         Ogre::Light* fill = mScene->createLight("fill");
         fill->setType(Ogre::Light::LT_POINT);
         Ogre::SceneNode* fNode = mScene->getRootSceneNode()->createChildSceneNode("fillNode",
-            Ogre::Vector3(-90.0f, 55.0f, 60.0f));
+            Ogre::Vector3(-120.0f, 58.0f, 90.0f));
         fNode->attachObject(fill);
-        fill->setDiffuseColour(0.35f, 0.45f, 0.7f);
-        fill->setAttenuation(250.0f, 1.0f, 0.007f, 0.0f);
-
-        Ogre::Light* rim = mScene->createLight("rim");
-        rim->setType(Ogre::Light::LT_SPOTLIGHT);
-        Ogre::SceneNode* rNode = mScene->getRootSceneNode()->createChildSceneNode("rimNode",
-            Ogre::Vector3(100.0f, 95.0f, -20.0f));
-        rNode->lookAt(Ogre::Vector3(0.0f, 25.0f, 0.0f), Ogre::Node::TS_PARENT);
-        rNode->attachObject(rim);
-        rim->setDiffuseColour(1.0f, 0.9f, 0.3f);
-        rim->setSpotlightRange(Ogre::Degree(20.0f), Ogre::Degree(45.0f));
+        fill->setDiffuseColour(0.22f, 0.35f, 0.55f);
+        fill->setAttenuation(320.0f, 1.0f, 0.006f, 0.0f);
 
         mCamNode = mScene->getRootSceneNode()->createChildSceneNode("cam");
-        mCamNode->setPosition(0.0f, 48.0f, 195.0f);
+        mCamNode->setPosition(0.0f, 42.0f, 154.0f);
         mCam = mScene->createCamera("main");
         mCam->setNearClipDistance(0.1f);
-        mCam->setFarClipDistance(2000.0f);
+        mCam->setFarClipDistance(900.0f);
         mCam->setAutoAspectRatio(true);
         mCamNode->attachObject(mCam);
         mRenderWindow = getRenderWindow();
         mScene->setFog(
-            Ogre::FOG_LINEAR, Ogre::ColourValue(0.04f, 0.05f, 0.1f), 0.001f, 80.0f, 360.0f);
+            Ogre::FOG_LINEAR, Ogre::ColourValue(0.78f, 0.67f, 0.76f), 0.001f, 180.0f, 560.0f);
         {
             Ogre::Viewport* const vp = mRenderWindow->addViewport(mCam);
-            vp->setBackgroundColour(Ogre::ColourValue(0.04f, 0.05f, 0.1f));
+            vp->setBackgroundColour(Ogre::ColourValue(0.86f, 0.68f, 0.74f));
             vp->setClearEveryFrame(true);
         }
 
-        Ogre::MeshManager::getSingleton().createPlane(
-            "assocGround", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-            Ogre::Plane(Ogre::Vector3::UNIT_Y, 0.0f), 2400.0f, 2400.0f, 32, 32, true, 1, 12.0f, 12.0f,
-            Ogre::Vector3::UNIT_Z);
-
-        Ogre::Entity* const ground = mScene->createEntity("assocGround");
-        mGroundNode = mScene->getRootSceneNode()->createChildSceneNode("ground");
-        mGroundNode->setPosition(0.0f, 0.0f, 0.0f);
-        mGroundNode->attachObject(ground);
-        ground->setMaterialName("Examples/Rockwall", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-        mGroundNode->pitch(Ogre::Degree(180.0f));
-
-        mHead = mScene->createEntity("assocHeadL", "ogrehead.mesh",
-            Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-        mHeadNode = mScene->getRootSceneNode()->createChildSceneNode("headL",
-            Ogre::Vector3(-72.0f, 18.0f, 15.0f));
-        mHeadNode->setScale(0.6f, 0.6f, 0.6f);
-        mHeadNode->yaw(Ogre::Degree(25.0f));
-        mHeadNode->attachObject(mHead);
-
-        mHead2 = mScene->createEntity("assocHeadR", "ogrehead.mesh",
-            Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-        mHeadNode2 = mScene->getRootSceneNode()->createChildSceneNode("headR",
-            Ogre::Vector3(72.0f, 18.0f, 12.0f));
-        mHeadNode2->setScale(0.5f, 0.5f, 0.5f);
-        mHeadNode2->yaw(Ogre::Degree(-30.0f));
-        mHeadNode2->attachObject(mHead2);
-
-        // --- 3D szöveg: `SdkTrays/Caption` + Essential. RTSS: `TVC_NONE`+diffúz gyakran fehér; helyette
-        //     `TVC_DIFFUSE` + arany `colour` / csúcs. LINEAR min/mag → mosott: nearest + clamp.
-        {
-            Ogre::FontPtr const font{Ogre::FontManager::getSingleton().getByName(
-                "SdkTrays/Caption", "Essential")};
-            if (!font)
-            {
-                OGRE_EXCEPT(Ogre::Exception::ERR_ITEM_NOT_FOUND, "Font SdkTrays/Caption (Essential) nem talalhato",
-                    "AssocApp::setup");
-            }
-            // Ogre::Font: mMaterial csak loadImpl() után; getMaterial() / clone() előtt kötelező a load().
-            font->load();
-            Ogre::MaterialPtr m{font->getMaterial()};
-            if (!m)
-            {
-                OGRE_EXCEPT(Ogre::Exception::ERR_INVALID_STATE, "Font anyag nincs (getMaterial) load utan", "AssocApp::setup");
-            }
-            m = m->clone("assoc/3DTextMat", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-            Ogre::Technique* const te{m->getTechnique(0)};
-            if (te)
-            {
-                Ogre::Pass* const pa{te->getPass(0)};
-                if (pa)
-                {
-                    pa->setVertexColourTracking(Ogre::TVC_DIFFUSE);
-                    pa->setDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
-                    pa->setFog(true, Ogre::FOG_NONE);
-                    pa->setLightingEnabled(false);
-                    pa->setSelfIllumination(0.0f, 0.0f, 0.0f);
-                    pa->setDepthCheckEnabled(true);
-                    if (pa->getNumTextureUnitStates() > 0)
-                    {
-                        Ogre::TextureUnitState* const tus{pa->getTextureUnitState(0U)};
-                        tus->setTextureAddressingMode(Ogre::TextureUnitState::TAM_CLAMP);
-                        tus->setTextureFiltering(
-                            Ogre::FO_POINT, Ogre::FO_POINT, Ogre::FO_NONE);
-                    }
-                }
-            }
-
-            Ogre::uint32 id{0};
-            mLineAssoc = mScene->getRootSceneNode()->createChildSceneNode("3dline_assoc", Ogre::Vector3(0.0F, 34.0F, 0.0F));
-            add3DTextLine(mScene, mLineAssoc, "assoc3dL", *font, *m, "assoc", 16.0F, id);
-            mLineAssoc->setAutoTracking(true, mCamNode, Ogre::Vector3::UNIT_Z, Ogre::Vector3::ZERO);
-
-            mLineTop = mScene->getRootSceneNode()->createChildSceneNode("3dline_top", Ogre::Vector3(0.0F, 56.0F, 12.0F));
-            add3DTextLine(mScene, mLineTop, "top3dL", *font, *m, "ASSOC  |  Ogre3D  |  3D", 4.2F, id);
-            mLineTop->setAutoTracking(true, mCamNode, Ogre::Vector3::UNIT_Z, Ogre::Vector3::ZERO);
-
-            mLineBottom = mScene->getRootSceneNode()->createChildSceneNode("3dline_bot", Ogre::Vector3(0.0F, 6.0F, 18.0F));
-            add3DTextLine(
-                mScene, mLineBottom, "bot3dL", *font, *m, "a s s o c  (nem csak 2D, 3D jelenet)", 3.2F, id);
-            mLineBottom->setAutoTracking(true, mCamNode, Ogre::Vector3::UNIT_Z, Ogre::Vector3::ZERO);
-        }
+        buildWorld();
+        buildCatamaran();
     }
 
     void shutdown() override
     {
         if (mScene)
         {
-            if (mLineBottom)
-            {
-                mScene->destroySceneNode(mLineBottom);
-                mLineBottom = nullptr;
-            }
-            if (mLineTop)
-            {
-                mScene->destroySceneNode(mLineTop);
-                mLineTop = nullptr;
-            }
-            if (mLineAssoc)
-            {
-                mScene->destroySceneNode(mLineAssoc);
-                mLineAssoc = nullptr;
-            }
             Ogre::RTShader::ShaderGenerator::getSingleton().removeSceneManager(mScene);
         }
         mScene = nullptr;
@@ -303,20 +212,38 @@ public:
     bool frameRenderingQueued(const Ogre::FrameEvent& evt) override
     {
         mT += evt.timeSinceLastFrame;
-        if (mHeadNode)
+        const Ogre::Real wave = Ogre::Math::Sin(mT * 1.4f);
+        const Ogre::Real slow = Ogre::Math::Sin(mT * 0.55f);
+
+        if (mBoatRoot)
         {
-            mHeadNode->yaw(Ogre::Radian(evt.timeSinceLastFrame * -0.25f));
+            mBoatRoot->setPosition(0.0f, 6.2f + wave * 0.75f, -12.0f + Ogre::Math::Sin(mT * 0.22f) * 8.0f);
+            mBoatRoot->resetOrientation();
+            mBoatRoot->yaw(Ogre::Degree(slow * 2.2f));
+            mBoatRoot->roll(Ogre::Degree(wave * 1.4f));
+            mBoatRoot->pitch(Ogre::Degree(Ogre::Math::Sin(mT * 0.9f) * 1.1f));
         }
-        if (mHeadNode2)
+
+        mSeparation = std::min(1.0f, std::max(0.0f,
+            mSeparation + (mSeparated ? 0.7f : -0.9f) * evt.timeSinceLastFrame));
+        for (std::size_t i = 0; i < mHullNodes.size(); ++i)
         {
-            mHeadNode2->yaw(Ogre::Radian(evt.timeSinceLastFrame * 0.2f));
+            const Ogre::Real targetX = mHullBaseX[i] * (1.0f + mSeparation * 0.42f);
+            const Ogre::Real targetZ = (i == 1U) ? 0.0f : Ogre::Math::Sin(mT * 1.2f + static_cast<Ogre::Real>(i)) * 0.75f * mSeparation;
+            mHullNodes[i]->setPosition(targetX, 0.0f, targetZ);
         }
+
+        if (mWakeNode)
+        {
+            mWakeNode->setScale(1.0f + 0.04f * wave, 1.0f, 1.0f + 0.08f * Ogre::Math::Abs(slow));
+        }
+
         if (mCamNode)
         {
-            const float c = 8.0f * Ogre::Math::Cos(mT * 0.15f);
-            const float s = 6.0f * Ogre::Math::Sin(mT * 0.12f);
-            mCamNode->setPosition(c, 48.0f + s * 0.3f, 195.0f);
-            mCamNode->lookAt(Ogre::Vector3(0.0f, 24.0f, 0.0f), Ogre::Node::TS_WORLD, Ogre::Vector3::NEGATIVE_UNIT_Z);
+            const Ogre::Real c = 10.0f * Ogre::Math::Cos(mT * 0.12f);
+            const Ogre::Real s = 7.0f * Ogre::Math::Sin(mT * 0.1f);
+            mCamNode->setPosition(c, 40.0f + s * 0.35f, 154.0f);
+            mCamNode->lookAt(Ogre::Vector3(0.0f, 12.0f, -10.0f), Ogre::Node::TS_WORLD, Ogre::Vector3::NEGATIVE_UNIT_Z);
         }
         return OgreBites::ApplicationContext::frameRenderingQueued(evt);
     }
@@ -327,27 +254,132 @@ public:
         {
             Ogre::Root::getSingleton().queueEndRendering();
         }
+        if (key.keysym.sym == OgreBites::SDLK_SPACE)
+        {
+            mSeparated = !mSeparated;
+        }
         return true;
     }
 
 private:
+    void createMaterials()
+    {
+        makeMaterial("assoc/water", Ogre::ColourValue(0.18f, 0.43f, 0.62f, 0.72f),
+            Ogre::ColourValue(0.02f, 0.08f, 0.12f), true);
+        makeMaterial("assoc/hullWhite", Ogre::ColourValue(0.86f, 0.9f, 0.92f, 1.0f));
+        makeMaterial("assoc/carbon", Ogre::ColourValue(0.05f, 0.06f, 0.07f, 1.0f));
+        makeMaterial("assoc/solarBlue", Ogre::ColourValue(0.42f, 0.83f, 1.0f, 0.7f),
+            Ogre::ColourValue(0.04f, 0.22f, 0.3f), true);
+        makeMaterial("assoc/solarLavender", Ogre::ColourValue(0.78f, 0.55f, 1.0f, 0.68f),
+            Ogre::ColourValue(0.16f, 0.08f, 0.22f), true);
+        makeMaterial("assoc/solarMint", Ogre::ColourValue(0.52f, 1.0f, 0.78f, 0.68f),
+            Ogre::ColourValue(0.05f, 0.2f, 0.13f), true);
+        makeMaterial("assoc/battery", Ogre::ColourValue(0.12f, 0.18f, 0.2f, 1.0f),
+            Ogre::ColourValue(0.03f, 0.12f, 0.1f));
+        makeMaterial("assoc/dockGlow", Ogre::ColourValue(1.0f, 0.82f, 0.36f, 0.86f),
+            Ogre::ColourValue(0.28f, 0.16f, 0.02f), true);
+        makeMaterial("assoc/wake", Ogre::ColourValue(0.86f, 0.98f, 1.0f, 0.38f),
+            Ogre::ColourValue(0.08f, 0.14f, 0.16f), true);
+        makeMaterial("assoc/sun", Ogre::ColourValue(1.0f, 0.62f, 0.34f, 0.85f),
+            Ogre::ColourValue(0.55f, 0.23f, 0.08f), true);
+        makeMaterial("assoc/skyPeach", Ogre::ColourValue(1.0f, 0.55f, 0.5f, 0.42f),
+            Ogre::ColourValue(0.12f, 0.05f, 0.06f), true);
+        makeMaterial("assoc/skyLilac", Ogre::ColourValue(0.64f, 0.55f, 1.0f, 0.35f),
+            Ogre::ColourValue(0.06f, 0.05f, 0.12f), true);
+    }
+
+    void buildWorld()
+    {
+        Ogre::MeshManager::getSingleton().createPlane(
+            "assocWater", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+            Ogre::Plane(Ogre::Vector3::UNIT_Y, kWaterY), 1600.0f, 1600.0f, 40, 40, true, 1, 20.0f, 20.0f,
+            Ogre::Vector3::UNIT_Z);
+        Ogre::Entity* water = mScene->createEntity("assocWater");
+        water->setMaterialName("assoc/water");
+        mWaterNode = mScene->getRootSceneNode()->createChildSceneNode("water");
+        mWaterNode->attachObject(water);
+
+        Ogre::ManualObject* sun = createDisc(mScene, "sunsetDisc", 26.0f, "assoc/sun");
+        Ogre::SceneNode* sunNode = mScene->getRootSceneNode()->createChildSceneNode("sun", Ogre::Vector3(95.0f, 64.0f, -260.0f));
+        sunNode->attachObject(sun);
+
+        for (int i = 0; i < 11; ++i)
+        {
+            const Ogre::String mat = (i % 2 == 0) ? "assoc/skyPeach" : "assoc/skyLilac";
+            Ogre::ManualObject* stripe = createBox(mScene, "skyStripe" + Ogre::StringConverter::toString(i),
+                Ogre::Vector3(380.0f, 2.2f + static_cast<Ogre::Real>(i % 3), 0.1f), mat);
+            Ogre::SceneNode* stripeNode = mScene->getRootSceneNode()->createChildSceneNode(
+                "skyStripeNode" + Ogre::StringConverter::toString(i),
+                Ogre::Vector3(15.0f, 82.0f - static_cast<Ogre::Real>(i) * 7.0f, -285.0f));
+            stripeNode->roll(Ogre::Degree(-4.0f));
+            stripeNode->attachObject(stripe);
+        }
+    }
+
+    void buildCatamaran()
+    {
+        mBoatRoot = mScene->getRootSceneNode()->createChildSceneNode("solarCatamaran", Ogre::Vector3(0.0f, 6.0f, -12.0f));
+        mHullBaseX = {{-28.0f, 0.0f, 28.0f}};
+        const std::array<Ogre::String, 3> solarMats{{"assoc/solarBlue", "assoc/solarLavender", "assoc/solarMint"}};
+
+        for (std::size_t i = 0; i < mHullBaseX.size(); ++i)
+        {
+            Ogre::SceneNode* hullRoot = mBoatRoot->createChildSceneNode(
+                "hullRoot" + Ogre::StringConverter::toString(i), Ogre::Vector3(mHullBaseX[i], 0.0f, 0.0f));
+            mHullNodes.push_back(hullRoot);
+
+            hullRoot->attachObject(createTaperedHull(mScene, "hull" + Ogre::StringConverter::toString(i), "assoc/hullWhite"));
+
+            Ogre::SceneNode* solarTop = hullRoot->createChildSceneNode(
+                "solarTop" + Ogre::StringConverter::toString(i), Ogre::Vector3(0.0f, 5.0f, 0.0f));
+            solarTop->attachObject(createBox(mScene, "solarTopBox" + Ogre::StringConverter::toString(i),
+                Ogre::Vector3(58.0f, 0.45f, 7.0f), solarMats[i]));
+
+            Ogre::SceneNode* battery = hullRoot->createChildSceneNode(
+                "battery" + Ogre::StringConverter::toString(i), Ogre::Vector3(-11.0f, 3.0f, 0.0f));
+            battery->attachObject(createBox(mScene, "batteryBox" + Ogre::StringConverter::toString(i),
+                Ogre::Vector3(12.0f, 2.0f, 4.8f), "assoc/battery"));
+        }
+
+        for (const Ogre::Real z : {-14.0f, 14.0f})
+        {
+            Ogre::SceneNode* bridge = mBoatRoot->createChildSceneNode("bridge" + Ogre::StringConverter::toString(z),
+                Ogre::Vector3(0.0f, 6.5f, z));
+            bridge->attachObject(createBox(mScene, "bridgeBeam" + Ogre::StringConverter::toString(z),
+                Ogre::Vector3(72.0f, 1.1f, 2.2f), "assoc/carbon"));
+
+            Ogre::SceneNode* panel = mBoatRoot->createChildSceneNode("bridgeSolar" + Ogre::StringConverter::toString(z),
+                Ogre::Vector3(0.0f, 7.25f, z));
+            panel->attachObject(createBox(mScene, "bridgeSolarPanel" + Ogre::StringConverter::toString(z),
+                Ogre::Vector3(62.0f, 0.35f, 3.0f), z < 0.0f ? "assoc/solarBlue" : "assoc/solarMint"));
+        }
+
+        for (const Ogre::Real x : {-14.0f, 14.0f})
+        {
+            Ogre::SceneNode* dock = mBoatRoot->createChildSceneNode("dockGlow" + Ogre::StringConverter::toString(x),
+                Ogre::Vector3(x, 7.6f, 0.0f));
+            dock->attachObject(createBox(mScene, "dockGlowBox" + Ogre::StringConverter::toString(x),
+                Ogre::Vector3(2.4f, 0.7f, 44.0f), "assoc/dockGlow"));
+        }
+
+        mWakeNode = mScene->getRootSceneNode()->createChildSceneNode("wake", Ogre::Vector3(0.0f, kWaterY + 0.08f, 36.0f));
+        mWakeNode->attachObject(createBox(mScene, "wakeFoam", Ogre::Vector3(92.0f, 0.08f, 95.0f), "assoc/wake"));
+    }
+
     Ogre::RenderWindow* mRenderWindow{nullptr};
     Ogre::SceneManager* mScene{nullptr};
     Ogre::Camera* mCam{nullptr};
     Ogre::SceneNode* mCamNode{nullptr};
 
-    Ogre::SceneNode* mGroundNode{nullptr};
-
-    Ogre::SceneNode* mHeadNode{nullptr};
-    Ogre::Entity* mHead{nullptr};
-    Ogre::SceneNode* mHeadNode2{nullptr};
-    Ogre::Entity* mHead2{nullptr};
-
-    Ogre::SceneNode* mLineAssoc{nullptr};
-    Ogre::SceneNode* mLineTop{nullptr};
-    Ogre::SceneNode* mLineBottom{nullptr};
+    Ogre::SceneNode* mWaterNode{nullptr};
+    Ogre::SceneNode* mBoatRoot{nullptr};
+    Ogre::SceneNode* mWakeNode{nullptr};
+    std::vector<Ogre::SceneNode*> mHullNodes;
+    std::array<Ogre::Real, 3> mHullBaseX{{-28.0f, 0.0f, 28.0f}};
 
     Ogre::Real mT{0.0f};
+    Ogre::Real mSeparation{0.0f};
+    bool mSeparated{false};
 };
 
 int main(int /*argc*/, char* /*argv*/[])

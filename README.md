@@ -1,32 +1,80 @@
 # assoc-ogre
 
-Kis Ogre3D 14 (Bites) + RTShader demó: 3D jelenet, szöveg a jelenetben betűnként `ManualObject` + `SdkTrays/Caption` font, nem overlay.
+Kis Ogre3D 14 (Bites) + RTShader demo: konnyu, asset-mentes, vizen uszo
+modularis napelemes katamaran. A hajotestek ManualObject geometriabol epulnek,
+kulso mesh/textura nelkul, hogy Linuxon/Archon es regi, 4 GB RAM-os gepen is
+visszafogottan fusson.
 
-## Függőségek
+## Fuggosegek
 
-- Ogre3D 14.x telepítve (CMake `OGREConfig.cmake` elérhető)
+- Ogre3D 14.x telepitve (CMake `OGREConfig.cmake` elerheto)
 - SDL2
-- A minta módokhoz/anyagokhoz: OGRE forráskönyvtár `Samples/Media` (hálók, `Examples/*` anyagok)
 
-A `CMakeLists.txt` alapértelmezett elérési utakat használ (`OGRE_SDK`, `OGRE_SAMPLES_MEDIA`); módosítsd, ha nálad máshol vannak:
+A `CMakeLists.txt` alapertelmezett Ogre prefixe `/usr`, de megadhatod kezzel:
 
 ```bash
 cmake -S . -B build \
-  -DOGRE_SDK=/path/to/ogre-sdk \
-  -DOGRE_SAMPLES_MEDIA=/path/to/ogre/Samples/Media
+  -DOGRE_SDK=/path/to/ogre-sdk
 cmake --build build
 ```
 
-A futtatáshoz a generált `build/plugins.cfg` és `build/resources.cfg` kell; indítás: `build/assoc` a build könyvtárból, vagy a projekt `run-mac.sh` (ha a gépen passzol az út).
+Vagy Arch/sajat Ogre prefix eseten:
 
-## GitHub (új repó + push)
+```bash
+./scripts/build-arch.sh /usr
+```
 
-1. Egy olyan terminálban, ahol tudod használni a `gh` böngészős bejelentkezését, egyszer: `gh auth login`  
-   (PAT-vel: `echo "$GITHUB_TOKEN" | gh auth login --with-token` — a tokennek kell joga repót hozni és pusholni.)
-2. A repó gyökeréből: `./scripts/github-create-and-push.sh`  
-   A szkript már nincs `origin` esetén létrehozza a **publikus** `assoc-ogre` repót a fiókodon és feltolja a `main`-t.  
-   Szervezet alá: `export GITHUB_ORG=szervezet_neve` (és szükséges a jog a repóhoz), majd ugyanígy a szkript.
+A script az elso argumentumot `OGRE_SDK` prefixkent hasznalja, es ha nem adsz meg
+`OGRE_PLUGIN_DIR` valtozot, megprobalja a szokasos `lib/OGRE`, `lib64/OGRE`,
+`lib/OGRE-14` konyvtarakat.
+
+A futtatashoz a generalt `build/plugins.cfg` es `build/resources.cfg` kell:
+
+```bash
+cd build
+./assoc
+```
+
+Billentyuk:
+
+- `Space`: a harom hajotest szet-/osszedokkolasa
+- `Esc`: kilepes
+
+## Arch Linux / regi MacBook 2009 late cel
+
+Archon tipikus csomagok:
+
+```bash
+sudo pacman -S --needed base-devel cmake sdl2
+# Ogre3D 14 telepitesedtol fuggoen: disztro/AUR/sajat build.
+```
+
+Ha az Ogre sajat prefixbe kerult:
+
+```bash
+./scripts/build-arch.sh /opt/ogre-14
+cd build
+./assoc
+```
+
+Kimeletes beallitasok a regi, 4 GB RAM-os gephez:
+
+- OpenGL 3+ render system, 1024x640 ablak
+- FSAA=0, VSync=Yes
+- nincs arnyek, nincs post-process, nincs textura/mesh sample media
+- a viz egyszeru plane, a hajo es egbolt alacsony poligonszamu ManualObject
+
+Ha gyenge az iGPU, inditas utan az `build/ogre.cfg` fajlban meg lejjebb veheted
+a `Video Mode` sort peldaul `800 x 600`-ra.
+
+## GitHub (uj repo + push)
+
+1. Egy olyan terminalban, ahol tudod hasznalni a `gh` bongeszos bejelentkezeset, egyszer: `gh auth login`
+   (PAT-vel: `echo "$GITHUB_TOKEN" | gh auth login --with-token` - a tokennek kell joga repot hozni es pusholni.)
+2. A repo gyokerebol: `./scripts/github-create-and-push.sh`
+   A szkript mar nincs `origin` eseten letrehozza a **publikus** `assoc-ogre` repot a fiokodon es feltolja a `main`-t.
+   Szervezet ala: `export GITHUB_ORG=szervezet_neve` (es szukseges a jog a repohoz), majd ugyanigy a szkript.
 
 ## Licenc
 
-A projektkód a szerzőé; az Ogre3D / minta módik külön licencelésűek (lásd az Ogre SDK / Samples dokumentációját).
+A projektkod a szerzoe; az Ogre3D kulon licencelesu.
