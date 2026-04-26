@@ -137,6 +137,37 @@ public:
     {
     }
 
+    bool oneTimeConfig() override
+    {
+        Ogre::Root* const root{getRoot()};
+        if (root->restoreConfig())
+        {
+            return true;
+        }
+
+        Ogre::RenderSystem* rs{root->getRenderSystemByName("OpenGL 3+ Rendering Subsystem")};
+        if (!rs && !root->getAvailableRenderers().empty())
+        {
+            rs = root->getAvailableRenderers().front();
+        }
+        if (!rs)
+        {
+            return false;
+        }
+
+        root->setRenderSystem(rs);
+        auto setOptionIfAvailable = [rs](const Ogre::String& key, const Ogre::String& value) {
+            if (rs->getConfigOptions().find(key) != rs->getConfigOptions().end())
+            {
+                rs->setConfigOption(key, value);
+            }
+        };
+        setOptionIfAvailable("Full Screen", "No");
+        setOptionIfAvailable("Video Mode", "1280 x 800");
+        setOptionIfAvailable("VSync", "Yes");
+        return true;
+    }
+
     void setup() override
     {
         OgreBites::ApplicationContext::setup();
