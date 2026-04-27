@@ -78,6 +78,12 @@ ASSOC_VIDEO_MODE="800 x 600" ./scripts/run-linux.sh .deps/ogre-14
 
 Billentyuk:
 
+- `W` / `Fel`: elore gyorsitas
+- `S` / `Le`: hatra/lassitas
+- `A` / `Bal`, `D` / `Jobb`: fordulas
+- `Q` / `E`: kamera korbeforgatasa koveto kameraban
+- `C`: koveto kamera / fix cinematic kamera valtasa
+- `R`: hajo es kamera reset
 - `Space`: a harom hajotest szet-/osszedokkolasa
 - `Esc`: kilepes
 

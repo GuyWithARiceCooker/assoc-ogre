@@ -4,7 +4,8 @@
  * Cel: fusson Linuxon/Archon es regi, 4 GB RAM-os MacBookon is. Ezert minden
  * lathato elem ManualObject vagy egyszeru Ogre plane: nincs kulso mesh, nincs
  * textura, nincs draga post-process. A hajo vizen uszik, lassan halad/billeg,
- * Space billentyuvel a harom test "szetdokkolhato".
+ * WASD/QE billentyukkel vezetheted, Space billentyuvel a harom test
+ * "szetdokkolhato".
  */
 
 #include "Ogre.h"
@@ -27,6 +28,10 @@
 namespace
 {
     constexpr Ogre::Real kWaterY = 0.0f;
+    constexpr int keyCode(const char c)
+    {
+        return static_cast<int>(c);
+    }
 
     void preferX11WhenWaylandOgreIsUnavailable()
     {
@@ -152,6 +157,11 @@ namespace
         mo->end();
         return mo;
     }
+
+    Ogre::Real clampReal(const Ogre::Real value, const Ogre::Real lo, const Ogre::Real hi)
+    {
+        return std::max(lo, std::min(hi, value));
+    }
 } // namespace
 
 class AssocApp
@@ -205,20 +215,20 @@ public:
 
         mScene->setAmbientLight(Ogre::ColourValue(0.18f, 0.18f, 0.22f));
 
-        Ogre::Light* key = mScene->createLight("key");
-        key->setType(Ogre::Light::LT_DIRECTIONAL);
-        Ogre::SceneNode* kNode = mScene->getRootSceneNode()->createChildSceneNode("keyNode");
-        kNode->setDirection(Ogre::Vector3(-0.38f, -0.62f, -0.44f).normalisedCopy());
-        kNode->attachObject(key);
-        key->setDiffuseColour(1.0f, 0.78f, 0.52f);
+        mKeyLight = mScene->createLight("key");
+        mKeyLight->setType(Ogre::Light::LT_DIRECTIONAL);
+        mKeyNode = mScene->getRootSceneNode()->createChildSceneNode("keyNode");
+        mKeyNode->setDirection(Ogre::Vector3(-0.38f, -0.62f, -0.44f).normalisedCopy());
+        mKeyNode->attachObject(mKeyLight);
+        mKeyLight->setDiffuseColour(1.0f, 0.78f, 0.52f);
 
-        Ogre::Light* fill = mScene->createLight("fill");
-        fill->setType(Ogre::Light::LT_POINT);
+        mFillLight = mScene->createLight("fill");
+        mFillLight->setType(Ogre::Light::LT_POINT);
         Ogre::SceneNode* fNode = mScene->getRootSceneNode()->createChildSceneNode("fillNode",
             Ogre::Vector3(-120.0f, 58.0f, 90.0f));
-        fNode->attachObject(fill);
-        fill->setDiffuseColour(0.22f, 0.35f, 0.55f);
-        fill->setAttenuation(320.0f, 1.0f, 0.006f, 0.0f);
+        fNode->attachObject(mFillLight);
+        mFillLight->setDiffuseColour(0.22f, 0.35f, 0.55f);
+        mFillLight->setAttenuation(320.0f, 1.0f, 0.006f, 0.0f);
 
         mCamNode = mScene->getRootSceneNode()->createChildSceneNode("cam");
         mCamNode->setPosition(0.0f, 42.0f, 154.0f);
@@ -256,14 +266,17 @@ public:
     bool frameRenderingQueued(const Ogre::FrameEvent& evt) override
     {
         mT += evt.timeSinceLastFrame;
+        updateControls(evt.timeSinceLastFrame);
+
         const Ogre::Real wave = Ogre::Math::Sin(mT * 1.4f);
         const Ogre::Real slow = Ogre::Math::Sin(mT * 0.55f);
 
         if (mBoatRoot)
         {
-            mBoatRoot->setPosition(0.0f, 6.2f + wave * 0.75f, -12.0f + Ogre::Math::Sin(mT * 0.22f) * 8.0f);
+            mBoatPos.y = 6.2f + wave * 0.75f;
+            mBoatRoot->setPosition(mBoatPos);
             mBoatRoot->resetOrientation();
-            mBoatRoot->yaw(Ogre::Degree(slow * 2.2f));
+            mBoatRoot->yaw(Ogre::Degree(mBoatHeading + slow * 1.2f));
             mBoatRoot->roll(Ogre::Degree(wave * 1.4f));
             mBoatRoot->pitch(Ogre::Degree(Ogre::Math::Sin(mT * 0.9f) * 1.1f));
         }
@@ -279,15 +292,40 @@ public:
 
         if (mWakeNode)
         {
-            mWakeNode->setScale(1.0f + 0.04f * wave, 1.0f, 1.0f + 0.08f * Ogre::Math::Abs(slow));
+            mWakeNode->setPosition(mBoatPos.x, kWaterY + 0.08f, mBoatPos.z + 48.0f);
+            mWakeNode->setScale(1.0f + 0.04f * wave + Ogre::Math::Abs(mBoatSpeed) * 0.01f, 1.0f,
+                1.0f + 0.08f * Ogre::Math::Abs(slow) + Ogre::Math::Abs(mBoatSpeed) * 0.02f);
+        }
+
+        for (std::size_t i = 0; i < mWaveNodes.size(); ++i)
+        {
+            Ogre::SceneNode* const node = mWaveNodes[i];
+            const Ogre::Real phase = mT * (0.28f + 0.03f * static_cast<Ogre::Real>(i)) + static_cast<Ogre::Real>(i) * 0.73f;
+            node->setPosition(mWaveBase[i].x + Ogre::Math::Sin(phase) * 18.0f,
+                kWaterY + 0.04f + Ogre::Math::Sin(phase * 1.7f) * 0.03f,
+                mWaveBase[i].z + Ogre::Math::Cos(phase * 0.7f) * 26.0f);
+            node->setScale(1.0f + 0.12f * Ogre::Math::Sin(phase), 1.0f,
+                1.0f + 0.22f * Ogre::Math::Cos(phase * 0.8f));
+        }
+
+        if (mSunNode)
+        {
+            mSunNode->setScale(1.0f + 0.03f * Ogre::Math::Sin(mT * 0.35f), 1.0f + 0.03f * Ogre::Math::Sin(mT * 0.35f), 1.0f);
+        }
+        if (mKeyLight)
+        {
+            const Ogre::Real glow = 0.5f + 0.5f * Ogre::Math::Sin(mT * 0.18f);
+            mKeyLight->setDiffuseColour(1.0f, 0.72f + glow * 0.08f, 0.48f + glow * 0.08f);
+        }
+        if (mKeyNode)
+        {
+            mKeyNode->setDirection(Ogre::Vector3(-0.38f + 0.06f * Ogre::Math::Sin(mT * 0.11f), -0.62f,
+                -0.44f + 0.04f * Ogre::Math::Cos(mT * 0.09f)).normalisedCopy());
         }
 
         if (mCamNode)
         {
-            const Ogre::Real c = 10.0f * Ogre::Math::Cos(mT * 0.12f);
-            const Ogre::Real s = 7.0f * Ogre::Math::Sin(mT * 0.1f);
-            mCamNode->setPosition(c, 40.0f + s * 0.35f, 154.0f);
-            mCamNode->lookAt(Ogre::Vector3(0.0f, 12.0f, -10.0f), Ogre::Node::TS_WORLD, Ogre::Vector3::NEGATIVE_UNIT_Z);
+            updateCamera();
         }
         return OgreBites::ApplicationContext::frameRenderingQueued(evt);
     }
@@ -302,6 +340,21 @@ public:
         {
             mSeparated = !mSeparated;
         }
+        if (key.keysym.sym == keyCode('c'))
+        {
+            mFollowCamera = !mFollowCamera;
+        }
+        if (key.keysym.sym == keyCode('r'))
+        {
+            resetBoat();
+        }
+        setKeyState(key.keysym.sym, true);
+        return true;
+    }
+
+    bool keyReleased(const OgreBites::KeyboardEvent& key) override
+    {
+        setKeyState(key.keysym.sym, false);
         return true;
     }
 
@@ -313,6 +366,77 @@ private:
         {
             rs->setConfigOption(name, value);
         }
+    }
+
+    void setKeyState(const int sym, const bool pressed)
+    {
+        if (sym == keyCode('w') || sym == OgreBites::SDLK_UP)
+        {
+            mForward = pressed;
+        }
+        else if (sym == keyCode('s') || sym == OgreBites::SDLK_DOWN)
+        {
+            mBackward = pressed;
+        }
+        else if (sym == keyCode('a') || sym == OgreBites::SDLK_LEFT)
+        {
+            mTurnLeft = pressed;
+        }
+        else if (sym == keyCode('d') || sym == OgreBites::SDLK_RIGHT)
+        {
+            mTurnRight = pressed;
+        }
+        else if (sym == keyCode('q'))
+        {
+            mCameraLeft = pressed;
+        }
+        else if (sym == keyCode('e'))
+        {
+            mCameraRight = pressed;
+        }
+    }
+
+    void updateControls(const Ogre::Real dt)
+    {
+        const Ogre::Real throttle = (mForward ? 1.0f : 0.0f) - (mBackward ? 1.0f : 0.0f);
+        const Ogre::Real turn = (mTurnRight ? 1.0f : 0.0f) - (mTurnLeft ? 1.0f : 0.0f);
+        mBoatSpeed = clampReal(mBoatSpeed + throttle * 18.0f * dt, -13.0f, 24.0f);
+        mBoatSpeed *= Ogre::Math::Pow(0.84f, dt);
+        mBoatHeading += turn * (28.0f + Ogre::Math::Abs(mBoatSpeed) * 1.4f) * dt;
+        const Ogre::Radian headingRad{Ogre::Degree(mBoatHeading)};
+        const Ogre::Vector3 forward{Ogre::Math::Sin(headingRad), 0.0f, -Ogre::Math::Cos(headingRad)};
+        mBoatPos += forward * mBoatSpeed * dt;
+        mBoatPos.x = clampReal(mBoatPos.x, -310.0f, 310.0f);
+        mBoatPos.z = clampReal(mBoatPos.z, -330.0f, 260.0f);
+
+        const Ogre::Real cameraTurn = (mCameraRight ? 1.0f : 0.0f) - (mCameraLeft ? 1.0f : 0.0f);
+        mCameraYaw += cameraTurn * 55.0f * dt;
+    }
+
+    void updateCamera()
+    {
+        if (mFollowCamera)
+        {
+            const Ogre::Radian orbit{Ogre::Degree(mBoatHeading + 180.0f + mCameraYaw)};
+            const Ogre::Vector3 offset{Ogre::Math::Sin(orbit) * 118.0f, 38.0f, -Ogre::Math::Cos(orbit) * 118.0f};
+            mCamNode->setPosition(mBoatPos + offset);
+            mCamNode->lookAt(mBoatPos + Ogre::Vector3(0.0f, 8.0f, -8.0f), Ogre::Node::TS_WORLD, Ogre::Vector3::NEGATIVE_UNIT_Z);
+        }
+        else
+        {
+            const Ogre::Real c = 10.0f * Ogre::Math::Cos(mT * 0.12f);
+            const Ogre::Real s = 7.0f * Ogre::Math::Sin(mT * 0.1f);
+            mCamNode->setPosition(c, 40.0f + s * 0.35f, 154.0f);
+            mCamNode->lookAt(Ogre::Vector3(0.0f, 12.0f, -10.0f), Ogre::Node::TS_WORLD, Ogre::Vector3::NEGATIVE_UNIT_Z);
+        }
+    }
+
+    void resetBoat()
+    {
+        mBoatPos = Ogre::Vector3(0.0f, 6.2f, -12.0f);
+        mBoatHeading = 0.0f;
+        mBoatSpeed = 0.0f;
+        mCameraYaw = 0.0f;
     }
 
     void createMaterials()
@@ -339,6 +463,12 @@ private:
             Ogre::ColourValue(0.12f, 0.05f, 0.06f), true);
         makeMaterial("assoc/skyLilac", Ogre::ColourValue(0.64f, 0.55f, 1.0f, 0.35f),
             Ogre::ColourValue(0.06f, 0.05f, 0.12f), true);
+        makeMaterial("assoc/waveLine", Ogre::ColourValue(0.9f, 0.98f, 1.0f, 0.30f),
+            Ogre::ColourValue(0.08f, 0.14f, 0.16f), true);
+        makeMaterial("assoc/solarGold", Ogre::ColourValue(1.0f, 0.72f, 0.32f, 0.58f),
+            Ogre::ColourValue(0.22f, 0.12f, 0.03f), true);
+        makeMaterial("assoc/panelGrid", Ogre::ColourValue(0.05f, 0.08f, 0.09f, 0.55f),
+            Ogre::ColourValue(0.0f, 0.02f, 0.03f), true);
     }
 
     void buildWorld()
@@ -353,8 +483,8 @@ private:
         mWaterNode->attachObject(water);
 
         Ogre::ManualObject* sun = createDisc(mScene, "sunsetDisc", 26.0f, "assoc/sun");
-        Ogre::SceneNode* sunNode = mScene->getRootSceneNode()->createChildSceneNode("sun", Ogre::Vector3(95.0f, 64.0f, -260.0f));
-        sunNode->attachObject(sun);
+        mSunNode = mScene->getRootSceneNode()->createChildSceneNode("sun", Ogre::Vector3(95.0f, 64.0f, -260.0f));
+        mSunNode->attachObject(sun);
 
         for (int i = 0; i < 11; ++i)
         {
@@ -366,6 +496,19 @@ private:
                 Ogre::Vector3(15.0f, 82.0f - static_cast<Ogre::Real>(i) * 7.0f, -285.0f));
             stripeNode->roll(Ogre::Degree(-4.0f));
             stripeNode->attachObject(stripe);
+        }
+
+        for (int i = 0; i < 18; ++i)
+        {
+            const Ogre::Real x = -360.0f + static_cast<Ogre::Real>((i * 47) % 720);
+            const Ogre::Real z = -230.0f + static_cast<Ogre::Real>((i * 71) % 520);
+            Ogre::SceneNode* waveNode = mScene->getRootSceneNode()->createChildSceneNode(
+                "waveLineNode" + Ogre::StringConverter::toString(i), Ogre::Vector3(x, kWaterY + 0.04f, z));
+            waveNode->yaw(Ogre::Degree(-8.0f + static_cast<Ogre::Real>(i % 5) * 4.0f));
+            waveNode->attachObject(createBox(mScene, "waveLine" + Ogre::StringConverter::toString(i),
+                Ogre::Vector3(42.0f + static_cast<Ogre::Real>(i % 4) * 16.0f, 0.04f, 1.2f), "assoc/waveLine"));
+            mWaveNodes.push_back(waveNode);
+            mWaveBase.push_back(Ogre::Vector3(x, kWaterY + 0.04f, z));
         }
     }
 
@@ -387,6 +530,20 @@ private:
                 "solarTop" + Ogre::StringConverter::toString(i), Ogre::Vector3(0.0f, 5.0f, 0.0f));
             solarTop->attachObject(createBox(mScene, "solarTopBox" + Ogre::StringConverter::toString(i),
                 Ogre::Vector3(58.0f, 0.45f, 7.0f), solarMats[i]));
+            for (int p = 0; p < 5; ++p)
+            {
+                Ogre::SceneNode* grid = hullRoot->createChildSceneNode(
+                    "solarGrid" + Ogre::StringConverter::toString(i) + "_" + Ogre::StringConverter::toString(p),
+                    Ogre::Vector3(-23.0f + static_cast<Ogre::Real>(p) * 11.5f, 5.28f, 0.0f));
+                grid->attachObject(createBox(mScene,
+                    "solarGridBox" + Ogre::StringConverter::toString(i) + "_" + Ogre::StringConverter::toString(p),
+                    Ogre::Vector3(0.35f, 0.08f, 7.35f), "assoc/panelGrid"));
+            }
+
+            Ogre::SceneNode* sidePanel = hullRoot->createChildSceneNode(
+                "solarSide" + Ogre::StringConverter::toString(i), Ogre::Vector3(3.0f, 2.7f, 4.35f));
+            sidePanel->attachObject(createBox(mScene, "solarSideBox" + Ogre::StringConverter::toString(i),
+                Ogre::Vector3(42.0f, 2.0f, 0.35f), solarMats[i]));
 
             Ogre::SceneNode* battery = hullRoot->createChildSceneNode(
                 "battery" + Ogre::StringConverter::toString(i), Ogre::Vector3(-11.0f, 3.0f, 0.0f));
@@ -405,6 +562,11 @@ private:
                 Ogre::Vector3(0.0f, 7.25f, z));
             panel->attachObject(createBox(mScene, "bridgeSolarPanel" + Ogre::StringConverter::toString(z),
                 Ogre::Vector3(62.0f, 0.35f, 3.0f), z < 0.0f ? "assoc/solarBlue" : "assoc/solarMint"));
+
+            Ogre::SceneNode* gold = mBoatRoot->createChildSceneNode("bridgeGoldPanel" + Ogre::StringConverter::toString(z),
+                Ogre::Vector3(0.0f, 7.55f, z + (z < 0.0f ? -2.7f : 2.7f)));
+            gold->attachObject(createBox(mScene, "bridgeGoldPanelBox" + Ogre::StringConverter::toString(z),
+                Ogre::Vector3(48.0f, 0.16f, 1.4f), "assoc/solarGold"));
         }
 
         for (const Ogre::Real x : {-14.0f, 14.0f})
@@ -423,16 +585,33 @@ private:
     Ogre::SceneManager* mScene{nullptr};
     Ogre::Camera* mCam{nullptr};
     Ogre::SceneNode* mCamNode{nullptr};
+    Ogre::Light* mKeyLight{nullptr};
+    Ogre::Light* mFillLight{nullptr};
+    Ogre::SceneNode* mKeyNode{nullptr};
+    Ogre::SceneNode* mSunNode{nullptr};
 
     Ogre::SceneNode* mWaterNode{nullptr};
     Ogre::SceneNode* mBoatRoot{nullptr};
     Ogre::SceneNode* mWakeNode{nullptr};
     std::vector<Ogre::SceneNode*> mHullNodes;
+    std::vector<Ogre::SceneNode*> mWaveNodes;
+    std::vector<Ogre::Vector3> mWaveBase;
     std::array<Ogre::Real, 3> mHullBaseX{{-28.0f, 0.0f, 28.0f}};
 
     Ogre::Real mT{0.0f};
     Ogre::Real mSeparation{0.0f};
+    Ogre::Vector3 mBoatPos{0.0f, 6.2f, -12.0f};
+    Ogre::Real mBoatHeading{0.0f};
+    Ogre::Real mBoatSpeed{0.0f};
+    Ogre::Real mCameraYaw{0.0f};
     bool mSeparated{false};
+    bool mForward{false};
+    bool mBackward{false};
+    bool mTurnLeft{false};
+    bool mTurnRight{false};
+    bool mCameraLeft{false};
+    bool mCameraRight{false};
+    bool mFollowCamera{true};
 };
 
 int main(int /*argc*/, char* /*argv*/[])
