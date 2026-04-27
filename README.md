@@ -3,7 +3,8 @@
 Kis Ogre3D 14 (Bites) + RTShader demo: konnyu, asset-mentes, vizen uszo
 modularis napelemes katamaran. A hajotestek ManualObject geometriabol epulnek,
 kulso mesh/textura nelkul, hogy Linuxon/Archon es regi, 4 GB RAM-os gepen is
-visszafogottan fusson.
+visszafogottan fusson. A jelenetben 3D projektorok, fustgep, lattathato
+fenykupok es fustben kirajzolodo fenycsikok is vannak.
 
 ## Fuggosegek
 
@@ -111,7 +112,8 @@ Kimeletes beallitasok a regi, 4 GB RAM-os gephez:
 - OpenGL 3+ render system, 1024x640 ablak
 - FSAA=0, VSync=Yes
 - nincs arnyek, nincs post-process, nincs textura/mesh sample media
-- a viz egyszeru plane, a hajo es egbolt alacsony poligonszamu ManualObject
+- a viz, hajo, egbolt, projektorok, fust es fenykupok alacsony poligonszamu
+  ManualObject elemek
 
 Ha gyenge az iGPU, inditas utan az `build/ogre.cfg` fajlban meg lejjebb veheted
 a `Video Mode` sort peldaul `800 x 600`-ra.
