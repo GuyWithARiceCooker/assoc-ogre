@@ -1,32 +1,186 @@
 # assoc-ogre
 
-Kis Ogre3D 14 (Bites) + RTShader demó: 3D jelenet, szöveg a jelenetben betűnként `ManualObject` + `SdkTrays/Caption` font, nem overlay.
+Ket kulon Ogre3D 14 (Bites) + RTShader demo, mindketto konnyu es asset-mentes:
 
-## Függőségek
+- `assoc`: vizen uszo modularis napelemes katamaran
+- `projectors`: kulon projektoros/fustgepes fenyjelenet
 
-- Ogre3D 14.x telepítve (CMake `OGREConfig.cmake` elérhető)
+Mindket demo ManualObject geometriabol epul, kulso mesh/textura nelkul, hogy
+Linuxon/Archon es regi, 4 GB RAM-os gepen is visszafogottan fusson.
+
+## Fuggosegek
+
+- Ogre3D 14.x telepitve (CMake `OGREConfig.cmake` elerheto)
 - SDL2
-- A minta módokhoz/anyagokhoz: OGRE forráskönyvtár `Samples/Media` (hálók, `Examples/*` anyagok)
 
-A `CMakeLists.txt` alapértelmezett elérési utakat használ (`OGRE_SDK`, `OGRE_SAMPLES_MEDIA`); módosítsd, ha nálad máshol vannak:
+Ha nincs meg Ogre, a repo tud helyi, minimalis Ogre 14 SDK-t epiteni
+`.deps/ogre-14` ala:
+
+```bash
+./scripts/install-ogre-local.sh
+```
+
+A `CMakeLists.txt` alapertelmezett Ogre prefixe `/usr`, de megadhatod kezzel:
 
 ```bash
 cmake -S . -B build \
-  -DOGRE_SDK=/path/to/ogre-sdk \
-  -DOGRE_SAMPLES_MEDIA=/path/to/ogre/Samples/Media
+  -DOGRE_SDK=/path/to/ogre-sdk
 cmake --build build
 ```
 
-A futtatáshoz a generált `build/plugins.cfg` és `build/resources.cfg` kell; indítás: `build/assoc` a build könyvtárból, vagy a projekt `run-mac.sh` (ha a gépen passzol az út).
+Vagy Arch/sajat Ogre prefix eseten:
 
-## GitHub (új repó + push)
+```bash
+./scripts/build-arch.sh /usr
+```
 
-1. Egy olyan terminálban, ahol tudod használni a `gh` böngészős bejelentkezését, egyszer: `gh auth login`  
-   (PAT-vel: `echo "$GITHUB_TOKEN" | gh auth login --with-token` — a tokennek kell joga repót hozni és pusholni.)
-2. A repó gyökeréből: `./scripts/github-create-and-push.sh`  
-   A szkript már nincs `origin` esetén létrehozza a **publikus** `assoc-ogre` repót a fiókodon és feltolja a `main`-t.  
-   Szervezet alá: `export GITHUB_ORG=szervezet_neve` (és szükséges a jog a repóhoz), majd ugyanígy a szkript.
+Helyi Ogre install utan:
+
+```bash
+OGRE_PLUGIN_DIR=.deps/ogre-14/lib/OGRE ./scripts/build-arch.sh .deps/ogre-14
+./scripts/run-linux.sh .deps/ogre-14
+./scripts/run-projectors.sh .deps/ogre-14
+```
+
+A script az elso argumentumot `OGRE_SDK` prefixkent hasznalja, es ha nem adsz meg
+`OGRE_PLUGIN_DIR` valtozot, megprobalja a szokasos `lib/OGRE`, `lib64/OGRE`,
+`lib/OGRE-14` konyvtarakat.
+
+A futtatashoz a generalt `build/plugins.cfg` es `build/resources.cfg` kell:
+
+Katamaran:
+
+```bash
+cd build
+./assoc
+```
+
+Projektor/fust:
+
+```bash
+cd build
+./projectors
+```
+
+Ha helyi `.deps/ogre-14` SDK-val forditottad, hasznald inkabb:
+
+```bash
+./scripts/run-linux.sh .deps/ogre-14
+./scripts/run-projectors.sh .deps/ogre-14
+```
+
+A futtato script Wayland/GNOME alatt alapbol XWayland/X11 SDL backenddel indul
+(`SDL_VIDEODRIVER=x11`), mert a helyi minimalis Ogre build Wayland nelkuli
+X11/EGL GL3Plus utvonalra van optimalizalva. Ha SDL Wayland ablakot ad at
+Ogre-nek, ilyen assert johet: `externalWlDisplay ... Recompile with
+OGRE_USE_WAYLAND=ON`. A binaris indulas elott akkor is X11-re allitja az SDL-t,
+ha a kornyezetben `SDL_VIDEODRIVER=wayland` maradt, kiveve ha kifejezetten
+`ASSOC_FORCE_X11=0` van megadva. Ha direkt Waylandet akarsz tesztelni, Ogre-t
+Wayland tamogatassal kell ujraepiteni:
+
+```bash
+OGRE_USE_WAYLAND=ON ./scripts/install-ogre-local.sh
+OGRE_PLUGIN_DIR=.deps/ogre-14/lib/OGRE ./scripts/build-arch.sh .deps/ogre-14
+ASSOC_FORCE_X11=0 SDL_VIDEODRIVER=wayland ./scripts/run-linux.sh .deps/ogre-14
+```
+
+Gyenge GPU-n kisebb ablak:
+
+```bash
+ASSOC_VIDEO_MODE="800 x 600" ./scripts/run-linux.sh .deps/ogre-14
+```
+
+Katamaran billentyuk:
+
+- `W` / `Fel`: elore gyorsitas
+- `S` / `Le`: hatra/lassitas
+- `A` / `Bal`, `D` / `Jobb`: fordulas
+- `Q` / `E`: kamera korbeforgatasa koveto kameraban
+- `C`: koveto kamera / fix cinematic kamera valtasa
+- `R`: hajo es kamera reset
+- `Space`: a harom hajotest szet-/osszedokkolasa
+- `Esc`: kilepes
+
+Projektoros demo:
+
+- fustgep + 3 projektor kulon jelenetben
+- attetszo 3D fenykupok mutatjak, honnan jon ki a feny
+- Ogre spotlightok valodi fenyforraskent vilagitanak a geometriara
+- `Esc`: kilepes
+
+## Arch Linux / regi MacBook 2009 late cel
+
+Archon tipikus csomagok:
+
+```bash
+sudo pacman -S --needed base-devel cmake sdl2
+# Ogre3D 14 telepitesedtol fuggoen: disztro/AUR/sajat build,
+# vagy a repo helyi installer scriptje:
+./scripts/install-ogre-local.sh
+```
+
+Ha az Ogre sajat prefixbe kerult:
+
+```bash
+./scripts/build-arch.sh /opt/ogre-14
+cd build
+./assoc
+```
+
+Kimeletes beallitasok a regi, 4 GB RAM-os gephez:
+
+- OpenGL 3+ render system, 1024x640 ablak
+- FSAA=0, VSync=Yes
+- nincs arnyek, nincs post-process, nincs textura/mesh sample media
+- a viz, hajo, egbolt, projektorok, fust es fenykupok alacsony poligonszamu
+  ManualObject elemek, de kulon binarisokban
+
+Ha gyenge az iGPU, inditas utan az `build/ogre.cfg` fajlban meg lejjebb veheted
+a `Video Mode` sort peldaul `800 x 600`-ra.
+
+### Wayland/GNOME fekete ablak vagy kilepes
+
+Régi MacBookon Arch + GNOME/Wayland alatt elso korben ezt probald:
+
+```bash
+sudo pacman -S --needed mesa libglvnd xorg-xwayland mesa-utils
+glxinfo -B
+ASSOC_VIDEO_MODE="800 x 600" ./scripts/run-linux.sh .deps/ogre-14
+```
+
+Ha `RuntimeAssertionException ... externalWlDisplay ... Recompile with
+OGRE_USE_WAYLAND=ON` hibaval all meg, akkor SDL Wayland ablakot adott az X11/EGL
+Ogre buildnek. Javitas:
+
+```bash
+SDL_VIDEODRIVER=x11 ASSOC_VIDEO_MODE="800 x 600" ./scripts/run-linux.sh .deps/ogre-14
+```
+
+Ha ragaszkodsz a nativ Waylandhez, epitsd ujra Ogre-t:
+
+```bash
+OGRE_USE_WAYLAND=ON ./scripts/install-ogre-local.sh
+OGRE_PLUGIN_DIR=.deps/ogre-14/lib/OGRE ./scripts/build-arch.sh .deps/ogre-14
+ASSOC_FORCE_X11=0 SDL_VIDEODRIVER=wayland ./scripts/run-linux.sh .deps/ogre-14
+```
+
+Ha meg mindig fekete:
+
+```bash
+LIBGL_ALWAYS_SOFTWARE=1 ASSOC_VIDEO_MODE="800 x 600" ./scripts/run-linux.sh .deps/ogre-14
+```
+
+Ha igy elindul, akkor a hardveres Mesa/driver vagy Wayland GL utvonal a hibas,
+nem maga a jelenet.
+
+## GitHub (uj repo + push)
+
+1. Egy olyan terminalban, ahol tudod hasznalni a `gh` bongeszos bejelentkezeset, egyszer: `gh auth login`
+   (PAT-vel: `echo "$GITHUB_TOKEN" | gh auth login --with-token` - a tokennek kell joga repot hozni es pusholni.)
+2. A repo gyokerebol: `./scripts/github-create-and-push.sh`
+   A szkript mar nincs `origin` eseten letrehozza a **publikus** `assoc-ogre` repot a fiokodon es feltolja a `main`-t.
+   Szervezet ala: `export GITHUB_ORG=szervezet_neve` (es szukseges a jog a repohoz), majd ugyanigy a szkript.
 
 ## Licenc
 
-A projektkód a szerzőé; az Ogre3D / minta módik külön licencelésűek (lásd az Ogre SDK / Samples dokumentációját).
+A projektkod a szerzoe; az Ogre3D kulon licencelesu.

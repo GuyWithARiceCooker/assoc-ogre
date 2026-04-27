@@ -1,11 +1,5 @@
-# Ogre3D bővítmények (generált a CMake helyi Ogre-SDK-útvonallal)
-# Csak GL3+: a macOS-en a GL+GL3Plus együtt ugyanazt az OgreGLView/Window ObjC osztályt tölti be.
-PluginFolder=@OGRE_SDK@/lib/OGRE
- Plugin=RenderSystem_GL3Plus
- Plugin=Plugin_ParticleFX
- Plugin=Plugin_BSPSceneManager
- Plugin=Codec_STBI
- Plugin=Plugin_PCZSceneManager
- Plugin=Plugin_OctreeZone
- Plugin=Plugin_OctreeSceneManager
- Plugin=Plugin_DotScene
+# Ogre3D bovitmenyek (generalt a CMake helyi Ogre-SDK-utvonallal).
+# Csak GL3+: a macOS-en a GL+GL3Plus egyutt ugyanazt az OgreGLView/Window ObjC osztalyt tolti be.
+PluginFolder=@OGRE_PLUGIN_DIR@
+Plugin=RenderSystem_GL3Plus
+Plugin=Plugin_OctreeSceneManager
