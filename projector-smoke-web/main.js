@@ -1,6 +1,6 @@
-// Mobile-first visible demo. Uses Canvas2D by default because mobile WebGL/raymarching
-// can silently fail or render too dark on some browsers. The drawing still models the
-// same idea: four full-image projector fields are evaluated in one shared fog volume.
+// Mobile-first visible demo. Canvas2D is used intentionally here: it is stable on
+// phones, and every visible fog sample is computed from the same projector-light
+// equation. There are no separate "intersection blob" objects.
 
 const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -12,6 +12,8 @@ let quality = matchMedia('(pointer: coarse), (max-width: 720px)').matches ? 0 : 
 let time = 0;
 let last = performance.now();
 let cameraAngle = -0.55;
+let cells = [];
+let sparseRays = [];
 
 const smokeCenter = { x: 0, y: 16, z: 0 };
 const projectors = [
@@ -22,7 +24,7 @@ const projectors = [
 ];
 
 function resize() {
-  const ratio = quality === 0 ? 0.7 : quality === 1 ? 0.9 : 1.15;
+  const ratio = quality === 0 ? 0.72 : quality === 1 ? 0.92 : 1.15;
   const dpr = Math.min(devicePixelRatio || 1, ratio);
   canvas.width = Math.max(240, Math.floor(innerWidth * dpr));
   canvas.height = Math.max(320, Math.floor(innerHeight * dpr));
@@ -31,24 +33,36 @@ function resize() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 resize();
-addEventListener('resize', resize);
+addEventListener('resize', () => { resize(); rebuildField(); });
 
 function pattern(u, v, id) {
   const r = Math.hypot(u, v);
   const a = Math.atan2(v, u);
-  if (id === 0) return Math.abs(r - 0.52) < 0.085 || Math.abs(u - v) < 0.09 || Math.abs(u + v) < 0.09;
-  if (id === 1) return Math.abs(u) < 0.16 || Math.abs(v) < 0.16 || (Math.abs(u) > 0.45 && Math.abs(v) > 0.45 && Math.abs(u) < 0.84 && Math.abs(v) < 0.84);
-  if (id === 2) return Math.abs(Math.sin(5.0 * a + 8.0 * r)) > 0.72 && r < 0.95;
-  const checker = ((Math.floor((u + 1) * 4) + Math.floor((v + 1) * 4)) % 2) === 0;
-  return (checker && Math.abs(u) < 0.9 && Math.abs(v) < 0.9) || r < 0.30;
+  if (id === 0) return Math.max(softBand(r, 0.52, 0.09), softBand(u - v, 0, 0.095), softBand(u + v, 0, 0.095));
+  if (id === 1) {
+    const cross = Math.max(softBand(u, 0, 0.17), softBand(v, 0, 0.17));
+    const blocks = smoothStep(0.45, 0.54, Math.abs(u)) * smoothStep(0.45, 0.54, Math.abs(v)) * (1 - smoothStep(0.84, 0.96, Math.max(Math.abs(u), Math.abs(v))));
+    return Math.max(cross, blocks);
+  }
+  if (id === 2) return smoothStep(0.70, 0.95, Math.abs(Math.sin(5.0 * a + 8.0 * r))) * (1 - smoothStep(0.82, 0.98, r));
+  const checker = ((Math.floor((u + 1) * 4) + Math.floor((v + 1) * 4)) % 2) === 0 ? 0.78 : 0.0;
+  return Math.max(checker * (1 - smoothStep(0.86, 1.0, Math.max(Math.abs(u), Math.abs(v)))), 1 - smoothStep(0.25, 0.34, r));
 }
 
+function smoothStep(a, b, x) {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+function softBand(x, center, width) {
+  return 1 - smoothStep(width * 0.55, width, Math.abs(x - center));
+}
 function sub(a, b) { return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z }; }
 function add(a, b) { return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z }; }
 function mul(a, s) { return { x: a.x * s, y: a.y * s, z: a.z * s }; }
 function dot(a, b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 function cross(a, b) { return { x: a.y*b.z - a.z*b.y, y: a.z*b.x - a.x*b.z, z: a.x*b.y - a.y*b.x }; }
 function norm(a) { const l = Math.hypot(a.x, a.y, a.z) || 1; return mul(a, 1 / l); }
+function clamp255(x) { return Math.max(0, Math.min(255, Math.round(x))); }
 
 function basis(forward) {
   const f = norm(forward);
@@ -58,11 +72,15 @@ function basis(forward) {
   return { right, up, forward: f };
 }
 
+const projectorFrames = projectors.map((proj) => {
+  const forward = norm(sub(smokeCenter, proj.pos));
+  return { ...proj, ...basis(forward), lens: add(proj.pos, mul(forward, 7)) };
+});
+
 function rotateY(p, a) {
   const s = Math.sin(a), c = Math.cos(a);
   return { x: p.x * c - p.z * s, y: p.y, z: p.x * s + p.z * c };
 }
-
 function project(p) {
   const w = innerWidth, h = innerHeight;
   const cam = rotateY(p, -cameraAngle);
@@ -70,8 +88,70 @@ function project(p) {
   const f = Math.min(w, h) * 1.15;
   return { x: w * 0.5 + cam.x * f / z, y: h * 0.54 - (cam.y - 10) * f / z, z };
 }
+function rgba(c, a) { return `rgba(${clamp255(c[0])},${clamp255(c[1])},${clamp255(c[2])},${a})`; }
 
-function rgba(c, a) { return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
+function densityAt(p) {
+  const qx = (p.x - smokeCenter.x) / 62;
+  const qy = (p.y - smokeCenter.y) / 36;
+  const qz = (p.z - smokeCenter.z) / 62;
+  const ellipsoid = 1 - smoothStep(0.72, 1.08, qx*qx + qy*qy + qz*qz);
+  const wisp = 0.72 + 0.28 * Math.sin(p.x * 0.09 + p.z * 0.07 + p.y * 0.11 + time * 0.45);
+  return Math.max(0, ellipsoid * wisp);
+}
+
+function projectorLightAt(p) {
+  const rgb = [0, 0, 0];
+  let hits = 0;
+  const contributors = [];
+  for (const proj of projectorFrames) {
+    const d = sub(p, proj.pos);
+    const z = dot(d, proj.forward);
+    if (z <= 2) continue;
+    const fovScale = 0.42;
+    const u = dot(d, proj.right) / (z * fovScale);
+    const v = dot(d, proj.up) / (z * fovScale);
+    if (Math.abs(u) > 1 || Math.abs(v) > 1) continue;
+    const img = pattern(u, v, proj.id);
+    if (img <= 0.01) continue;
+    const edge = 1 - smoothStep(0.78, 1.0, Math.max(Math.abs(u), Math.abs(v)));
+    const distAtten = 1 / (1 + 0.00085 * dot(d, d));
+    const contrib = img * edge * distAtten * 5.8;
+    rgb[0] += proj.color[0] * contrib;
+    rgb[1] += proj.color[1] * contrib;
+    rgb[2] += proj.color[2] * contrib;
+    hits += Math.min(1, contrib * 0.55);
+    contributors.push({ proj, contrib });
+  }
+  return { rgb, hits, contributors };
+}
+
+function rebuildField() {
+  const grid = quality === 0 ? 30 : quality === 1 ? 40 : 52;
+  const yLayers = quality === 0 ? [10, 18, 26] : [6, 14, 22, 30];
+  cells = [];
+  sparseRays = [];
+  for (const y of yLayers) {
+    for (let iz = 0; iz < grid; iz++) {
+      for (let ix = 0; ix < grid; ix++) {
+        const x = -64 + (ix / (grid - 1)) * 128;
+        const z = -64 + (iz / (grid - 1)) * 128;
+        const p = { x, y, z };
+        const dens = densityAt(p);
+        if (dens < 0.025) continue;
+        const light = projectorLightAt(p);
+        const energy = (light.rgb[0] + light.rgb[1] + light.rgb[2]) / 765;
+        if (energy < 0.012 && dens < 0.22) continue;
+        cells.push({ p, dens, ...light, energy });
+        if (energy > 0.10 && sparseRays.length < 130) {
+          for (const c of light.contributors) {
+            if (c.contrib > 0.10 && (ix + iz + y) % 3 === 0) sparseRays.push({ from: c.proj.lens, to: p, color: c.proj.color, contrib: c.contrib });
+          }
+        }
+      }
+    }
+  }
+}
+rebuildField();
 
 function drawLine3(a, b, color, alpha, width = 1) {
   const pa = project(a), pb = project(b);
@@ -80,58 +160,40 @@ function drawLine3(a, b, color, alpha, width = 1) {
   ctx.lineWidth = width;
   ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
 }
-
-function drawDot3(p, color, alpha, radius) {
-  const pp = project(p);
+function drawCell(cell) {
+  const pp = project(cell.p);
   if (pp.z <= 1) return;
-  const r = radius * Math.min(innerWidth, innerHeight) / pp.z;
-  const g = ctx.createRadialGradient(pp.x, pp.y, 0, pp.x, pp.y, r * 4);
-  g.addColorStop(0, rgba(color, alpha));
-  g.addColorStop(1, rgba(color, 0));
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(pp.x, pp.y, r * 4, 0, Math.PI * 2); ctx.fill();
-}
-
-function projectorSamples(proj) {
-  const fwd = norm(sub(smokeCenter, proj.pos));
-  const b = basis(fwd);
-  const lens = add(proj.pos, mul(fwd, 7));
-  const planeCenter = add(smokeCenter, mul(fwd, proj.id % 2 ? 1.8 : -1.8));
-  const planeSize = 44;
-  const grid = quality === 0 ? 15 : quality === 1 ? 19 : 23;
-  const out = [];
-  for (let y = 0; y < grid; y++) {
-    for (let x = 0; x < grid; x++) {
-      const u = (x / (grid - 1)) * 2 - 1;
-      const v = (y / (grid - 1)) * 2 - 1;
-      if (!pattern(u, v, proj.id)) continue;
-      const target = add(add(planeCenter, mul(b.right, u * planeSize * 0.5)), mul(b.up, v * planeSize * 0.5));
-      out.push({ lens, target, u, v });
-    }
+  let rgb = cell.rgb;
+  let alpha = Math.min(0.58, 0.035 + cell.energy * 0.46 + cell.dens * 0.045);
+  if (mode === 1) {
+    const multi = smoothStep(0.85, 2.2, cell.hits);
+    rgb = [rgb[0] * 0.25 + 255 * multi, rgb[1] * 0.23 + 220 * multi, rgb[2] * 0.18 + 70 * multi];
+    alpha = Math.min(0.86, alpha + multi * 0.32);
+  } else if (mode === 2) {
+    alpha *= 0.48;
   }
-  return out;
+  const radius = (quality === 0 ? 2.2 : 1.75) * Math.min(innerWidth, innerHeight) / pp.z;
+  const grad = ctx.createRadialGradient(pp.x, pp.y, 0, pp.x, pp.y, radius * 2.7);
+  grad.addColorStop(0, rgba(rgb, alpha));
+  grad.addColorStop(1, rgba(rgb, 0));
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(pp.x, pp.y, radius * 2.7, 0, Math.PI * 2); ctx.fill();
 }
 
-let sampleCache = [];
-function rebuildSamples() { sampleCache = projectors.map(projectorSamples); }
-rebuildSamples();
+function drawProjectorIcons() {
+  for (const proj of projectorFrames) {
+    const pp = project(proj.pos);
+    if (pp.z <= 1) continue;
+    const r = 5 * Math.min(innerWidth, innerHeight) / pp.z;
+    ctx.fillStyle = rgba(proj.color, 0.90);
+    ctx.beginPath(); ctx.arc(pp.x, pp.y, Math.max(3, r * 2.5), 0, Math.PI * 2); ctx.fill();
+  }
+}
 
-function drawFog() {
-  const w = innerWidth, h = innerHeight;
-  const center = project(smokeCenter);
-  const rx = Math.min(w, h) * 0.34;
-  const ry = Math.min(w, h) * 0.24;
-  for (let i = 0; i < 26; i++) {
-    const a = i * 2.399 + time * 0.13;
-    const rr = ((i * 37) % 100) / 100;
-    const x = center.x + Math.cos(a) * rx * rr;
-    const y = center.y + Math.sin(a * 1.7) * ry * rr;
-    const r = (28 + (i % 7) * 10) * (quality === 0 ? 0.8 : 1.0);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, 'rgba(120,145,180,0.050)');
-    g.addColorStop(1, 'rgba(120,145,180,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+function drawGrid() {
+  for (let i = -9; i <= 9; i++) {
+    drawLine3({ x: i * 10, y: 0, z: -90 }, { x: i * 10, y: 0, z: 90 }, [80,120,160], 0.16);
+    drawLine3({ x: -90, y: 0, z: i * 10 }, { x: 90, y: 0, z: i * 10 }, [80,120,160], 0.16);
   }
 }
 
@@ -141,43 +203,22 @@ function render() {
   const bg = ctx.createLinearGradient(0, 0, 0, h);
   bg.addColorStop(0, '#0b1020'); bg.addColorStop(0.55, '#050912'); bg.addColorStop(1, '#02040a');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+  drawGrid();
 
-  // Ground grid.
-  ctx.strokeStyle = 'rgba(80,120,160,0.18)'; ctx.lineWidth = 1;
-  for (let i = -9; i <= 9; i++) {
-    drawLine3({ x: i * 10, y: 0, z: -90 }, { x: i * 10, y: 0, z: 90 }, [80,120,160], 0.18);
-    drawLine3({ x: -90, y: 0, z: i * 10 }, { x: 90, y: 0, z: i * 10 }, [80,120,160], 0.18);
+  if (mode === 2) {
+    for (const ray of sparseRays) drawLine3(ray.from, ray.to, ray.color, Math.min(0.36, 0.08 + ray.contrib * 0.08), 1.15);
+  } else {
+    for (const ray of sparseRays.slice(0, 40)) drawLine3(ray.from, ray.to, ray.color, 0.035, 0.8);
   }
 
-  drawFog();
-
-  // Full image projection: each bright pattern pixel contributes both along the path and at the shared fog volume.
-  for (let pi = 0; pi < projectors.length; pi++) {
-    const proj = projectors[pi];
-    const samples = sampleCache[pi];
-    const rayAlpha = mode === 1 ? 0.025 : mode === 2 ? 0.26 : 0.11;
-    const dotAlpha = mode === 1 ? 0.78 : mode === 2 ? 0.22 : 0.52;
-    for (const s of samples) {
-      drawLine3(s.lens, s.target, proj.color, rayAlpha, mode === 2 ? 1.35 : 0.85);
-    }
-    for (const s of samples) {
-      drawDot3(s.target, proj.color, dotAlpha, mode === 1 ? 2.25 : 1.4);
-    }
-    drawDot3(proj.pos, proj.color, 0.8, 2.7);
-  }
-
-  const c = project(smokeCenter);
-  const pulse = 1 + Math.sin(time * 2.8) * 0.12;
-  const halo = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, Math.min(w, h) * 0.24 * pulse);
-  halo.addColorStop(0, mode === 1 ? 'rgba(255,238,160,0.52)' : 'rgba(255,238,180,0.30)');
-  halo.addColorStop(0.28, 'rgba(255,210,120,0.14)');
-  halo.addColorStop(1, 'rgba(255,210,120,0)');
-  ctx.fillStyle = halo;
-  ctx.beginPath(); ctx.arc(c.x, c.y, Math.min(w, h) * 0.24 * pulse, 0, Math.PI * 2); ctx.fill();
+  // Back-to-front helps the volumetric field look less like separate sprites.
+  const sorted = cells.slice().sort((a, b) => project(b.p).z - project(a.p).z);
+  for (const cell of sorted) drawCell(cell);
+  drawProjectorIcons();
 
   ctx.fillStyle = 'rgba(235,245,255,0.78)';
   ctx.font = '12px system-ui, sans-serif';
-  ctx.fillText(mode === 1 ? 'osszeadott kozos fustterfogat' : mode === 2 ? 'sugarutak / mellektermek' : 'komplett projektorkepek a fustben', 14, h - 70);
+  ctx.fillText(mode === 1 ? 'szamolt osszeg: azonos fustpontban tobb projektor' : mode === 2 ? 'utvonalak, amelyek a fustmintakat megvilagitjak' : 'minden lathato pont szamolt fenyosszeg', 14, h - 70);
 }
 
 function animate(now = performance.now()) {
@@ -186,7 +227,9 @@ function animate(now = performance.now()) {
   const dt = Math.min(0.033, (now - last) / 1000 || 0.016);
   last = now;
   time += dt;
-  if (orbit) cameraAngle += dt * 0.32;
+  if (orbit) cameraAngle += dt * 0.22;
+  // Rebuild occasionally because density is animated.
+  if (Math.floor(time * 8) !== Math.floor((time - dt) * 8)) rebuildField();
   render();
 }
 
@@ -198,7 +241,7 @@ function setQuality(next) {
   quality = next;
   document.getElementById('qualityBtn').textContent = ['Low', 'Med', 'High'][quality];
   document.getElementById('qualityBtn').classList.toggle('active', quality > 0);
-  resize(); rebuildSamples();
+  resize(); rebuildField();
 }
 
 document.querySelectorAll('[data-mode]').forEach(btn => btn.addEventListener('click', () => setMode(Number(btn.dataset.mode))));
