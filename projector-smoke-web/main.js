@@ -13,7 +13,6 @@ let time = 0;
 let last = performance.now();
 let cameraAngle = -0.55;
 let smoke = [];
-let sparseRays = [];
 let frameNo = 0;
 
 const smokeCenter = { x: 0, y: 16, z: 0 };
@@ -159,7 +158,7 @@ function projectorLightAt(p) {
     if (img <= 0.01) continue;
     const edge = 1 - smoothStep(0.78, 1.0, Math.max(Math.abs(u), Math.abs(v)));
     const distAtten = 1 / (1 + 0.00085 * dot(d, d));
-    const contrib = img * edge * distAtten * 6.2;
+    const contrib = img * edge * distAtten * 9.0;
     rgb[0] += proj.color[0] * contrib;
     rgb[1] += proj.color[1] * contrib;
     rgb[2] += proj.color[2] * contrib;
@@ -183,30 +182,25 @@ function drawParticle(s) {
   const pp = project(s.p);
   if (pp.z <= 1) return;
 
+  if (light.energy <= 0.005) return;
   let rgb = light.rgb;
-  const neutral = 30 + dens * 30;
-  rgb = [rgb[0] + neutral * 0.55, rgb[1] + neutral * 0.60, rgb[2] + neutral * 0.72];
-  let alpha = Math.min(0.34, dens * (0.025 + light.energy * 0.30));
+  let alpha = Math.min(0.52, dens * Math.pow(light.energy, 0.78) * 0.58);
   if (mode === 1) {
     const multi = smoothStep(0.8, 2.15, light.hits);
     rgb = [rgb[0] * 0.28 + 255 * multi, rgb[1] * 0.25 + 225 * multi, rgb[2] * 0.20 + 70 * multi];
     alpha = Math.min(0.46, alpha + multi * 0.22);
   } else if (mode === 2) {
-    alpha *= 0.55;
+    alpha = Math.min(0.42, alpha * 1.7);
   }
 
-  const r = s.size * (quality === 0 ? 3.6 : 2.8) * Math.min(innerWidth, innerHeight) / pp.z;
+  const r = s.size * (quality === 0 ? 3.1 : 2.35) * Math.min(innerWidth, innerHeight) / pp.z;
   const g = ctx.createRadialGradient(pp.x, pp.y, 0, pp.x, pp.y, r * 2.4);
   g.addColorStop(0, rgba(rgb, alpha));
+  g.addColorStop(0.55, rgba(rgb, alpha * 0.22));
   g.addColorStop(1, rgba(rgb, 0));
   ctx.fillStyle = g;
   ctx.beginPath(); ctx.arc(pp.x, pp.y, r * 2.4, 0, Math.PI * 2); ctx.fill();
 
-  if (mode === 2 && light.energy > 0.16 && sparseRays.length < 80) {
-    for (const c of light.contributors) {
-      if (c.contrib > 0.12) sparseRays.push({ from: c.proj.lens, to: s.p, color: c.proj.color, contrib: c.contrib });
-    }
-  }
 }
 function drawProjectorIcons() {
   for (const proj of projectorFrames) {
@@ -217,12 +211,6 @@ function drawProjectorIcons() {
     ctx.beginPath(); ctx.arc(pp.x, pp.y, Math.max(3, r * 2.3), 0, Math.PI * 2); ctx.fill();
   }
 }
-function drawGrid() {
-  for (let i = -9; i <= 9; i++) {
-    drawLine3({ x: i * 10, y: 0, z: -90 }, { x: i * 10, y: 0, z: 90 }, [80,120,160], 0.14);
-    drawLine3({ x: -90, y: 0, z: i * 10 }, { x: 90, y: 0, z: i * 10 }, [80,120,160], 0.14);
-  }
-}
 
 function render() {
   const w = innerWidth, h = innerHeight;
@@ -230,19 +218,11 @@ function render() {
   const bg = ctx.createLinearGradient(0, 0, 0, h);
   bg.addColorStop(0, '#0b1020'); bg.addColorStop(0.55, '#050912'); bg.addColorStop(1, '#02040a');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
-  drawGrid();
-
-  sparseRays = [];
   const sorted = smoke.slice().sort((a, b) => project(b.p).z - project(a.p).z);
   for (const s of sorted) drawParticle(s);
-  if (mode === 2) {
-    for (const ray of sparseRays) drawLine3(ray.from, ray.to, ray.color, Math.min(0.34, 0.08 + ray.contrib * 0.08), 1.1);
-  }
-  drawProjectorIcons();
-
   ctx.fillStyle = 'rgba(235,245,255,0.82)';
   ctx.font = '12px system-ui, sans-serif';
-  ctx.fillText(mode === 1 ? 'elo fust: tobbszorosen megvilagitott reszecskek' : mode === 2 ? 'az aktualis fustreszecskeket megvilagito utak' : 'elo fustreszecskek pillanatnyi fenyosszege', 14, h - 70);
+  ctx.fillText(mode === 1 ? 'csak a tobbszorosen megvilagitott fustreszecskek erosodnek' : mode === 2 ? 'vetitett fenymintak csak a fustben latszanak' : 'csak a projektorfeny altal megvilagitott fust latszik', 14, h - 70);
 }
 
 function animate(now = performance.now()) {
