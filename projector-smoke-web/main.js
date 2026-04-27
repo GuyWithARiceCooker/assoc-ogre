@@ -92,20 +92,20 @@ function randomSmokePoint() {
   };
 }
 function seedSmoke() {
-  const count = quality === 0 ? 260 : quality === 1 ? 430 : 680;
+  const count = quality === 0 ? 520 : quality === 1 ? 820 : 1200;
   smoke = [];
   for (let i = 0; i < count; i++) {
     const p = randomSmokePoint();
     const warm = Math.random();
-    p.x += warm * 42 + randn() * (2 + warm * 14);
-    p.y += warm * 24 + randn() * (1 + warm * 8);
-    p.z -= warm * 34 + randn() * (2 + warm * 14);
+    p.x += warm * 46 + randn() * (2 + warm * 18);
+    p.y += warm * 28 + randn() * (1 + warm * 12);
+    p.z -= warm * 38 + randn() * (2 + warm * 18);
     smoke.push({
       p,
       age: warm * 5,
       life: 5 + Math.random() * 8,
       seed: Math.random() * 1000,
-      size: 0.85 + Math.random() * 1.55,
+      size: 0.62 + Math.random() * 1.05,
       density: 0.25 + Math.random() * 0.55,
     });
   }
@@ -152,6 +152,69 @@ function particleDensity(s) {
   return Math.max(0, ellipsoid * fade * wisp * s.density * 0.62);
 }
 
+
+function sculptureField(p) {
+  // Moving sculpture: a twisting double-ribbon/helix in the smoke.
+  // We compute distance to animated 3D curves; particles near those curves catch light.
+  const q = { x: p.x - 5, y: p.y - 22, z: p.z + 2 };
+  let best = 1e9;
+  for (let i = 0; i < 28; i++) {
+    const t = -3.14159 + (i / 27) * 6.28318;
+    const spin = time * 0.85;
+    const y = (t / 3.14159) * 24.0;
+    const r = 15.0 + 3.0 * Math.sin(t * 3.0 + spin);
+    const c1 = {
+      x: Math.sin(t + spin) * r,
+      y,
+      z: Math.cos(t * 1.35 + spin * 0.8) * 11.0
+    };
+    const c2 = {
+      x: Math.sin(t + spin + 3.14159) * (r * 0.72),
+      y: y + Math.sin(t * 2.0 + spin) * 2.0,
+      z: Math.cos(t * 1.35 + spin * 0.8 + 3.14159) * 9.0
+    };
+    const d1 = Math.hypot(q.x - c1.x, q.y - c1.y, q.z - c1.z) - 4.2;
+    const d2 = Math.hypot(q.x - c2.x, q.y - c2.y, q.z - c2.z) - 3.2;
+    best = Math.min(best, d1, d2);
+  }
+  // Small orbiting knots make it feel sculptural rather than a single line.
+  for (let k = 0; k < 3; k++) {
+    const a = time * 0.9 + k * 2.094;
+    const c = {
+      x: Math.cos(a) * 18.0,
+      y: Math.sin(a * 1.7) * 12.0,
+      z: Math.sin(a) * 14.0
+    };
+    best = Math.min(best, Math.hypot(q.x - c.x, q.y - c.y, q.z - c.z) - 5.0);
+  }
+  return best;
+}
+
+function sculptureGlow(p) {
+  const d = sculptureField(p);
+  // Bright only near the moving surface; soft halo in smoke, not empty air.
+  return Math.max(0, 1 - smoothStep(0.0, 5.2, Math.abs(d)));
+}
+
+function approximateNormal(p) {
+  const e = 1.8;
+  return norm({
+    x: sculptureField({ x: p.x + e, y: p.y, z: p.z }) - sculptureField({ x: p.x - e, y: p.y, z: p.z }),
+    y: sculptureField({ x: p.x, y: p.y + e, z: p.z }) - sculptureField({ x: p.x, y: p.y - e, z: p.z }),
+    z: sculptureField({ x: p.x, y: p.y, z: p.z + e }) - sculptureField({ x: p.x, y: p.y, z: p.z - e })
+  });
+}
+
+function projectedSculptureImage(u, v, id, p) {
+  // Each projector carries a view-dependent image of the same moving sculpture.
+  // The image is not a flat texture on a plane: it gates light by the 3D sculpture field.
+  const sculpture = sculptureGlow(p);
+  if (sculpture <= 0.0) return 0;
+  const stripe = 0.65 + 0.35 * Math.sin((u * 9.0 + v * 5.5) + time * (1.1 + id * 0.17));
+  const contour = 0.55 + 0.45 * Math.sin((u * u + v * v) * 18.0 - time * 1.6 + id);
+  return sculpture * (0.55 + 0.30 * stripe + 0.15 * contour);
+}
+
 function projectorLightAt(p) {
   const rgb = [0, 0, 0];
   let hits = 0;
@@ -164,15 +227,20 @@ function projectorLightAt(p) {
     const u = dot(d, proj.right) / (z * fovScale);
     const v = dot(d, proj.up) / (z * fovScale);
     if (Math.abs(u) > 1 || Math.abs(v) > 1) continue;
-    const imgPattern = pattern(u, v, proj.id);
-    const img = 0.12 + imgPattern * 0.88; // full projected image frame, with brighter image content
-    const edge = 1 - smoothStep(0.78, 1.0, Math.max(Math.abs(u), Math.abs(v)));
-    const distAtten = 1 / (1 + 0.00085 * dot(d, d));
-    const contrib = img * edge * distAtten * 8.5;
-    rgb[0] += proj.color[0] * contrib;
-    rgb[1] += proj.color[1] * contrib;
-    rgb[2] += proj.color[2] * contrib;
-    hits += Math.min(1, contrib * 0.55);
+    const img = projectedSculptureImage(u, v, proj.id, p);
+    if (img <= 0.001) continue;
+    const edge = 1 - smoothStep(0.80, 1.0, Math.max(Math.abs(u), Math.abs(v)));
+    const distAtten = 1 / (1 + 0.00115 * dot(d, d));
+    const normal = approximateNormal(p);
+    const incoming = norm(sub(proj.pos, p));
+    const phase = 0.35 + 0.65 * Math.pow(Math.max(0, dot(normal, incoming)) * 0.65 + 0.35, 1.7);
+    const contrib = img * edge * distAtten * phase * 13.0;
+    // Slightly desaturate as real smoke scatters coloured projector light.
+    const whiteScatter = contrib * 32;
+    rgb[0] += proj.color[0] * contrib + whiteScatter;
+    rgb[1] += proj.color[1] * contrib + whiteScatter;
+    rgb[2] += proj.color[2] * contrib + whiteScatter;
+    hits += Math.min(1, contrib * 0.60);
     contributors.push({ proj, contrib });
   }
   return { rgb, hits, contributors, energy: (rgb[0] + rgb[1] + rgb[2]) / 765 };
@@ -194,7 +262,7 @@ function drawParticle(s) {
 
   if (light.energy <= 0.0035) return;
   let rgb = light.rgb;
-  let alpha = Math.min(0.46, dens * Math.pow(light.energy, 0.72) * 0.56);
+  let alpha = Math.min(0.62, dens * Math.pow(light.energy, 0.68) * 0.86);
   if (mode === 1) {
     const multi = smoothStep(0.8, 2.15, light.hits);
     rgb = [rgb[0] * 0.28 + 255 * multi, rgb[1] * 0.25 + 225 * multi, rgb[2] * 0.20 + 70 * multi];
@@ -203,7 +271,7 @@ function drawParticle(s) {
     alpha = Math.min(0.42, alpha * 1.7);
   }
 
-  const r = s.size * (quality === 0 ? 3.4 : 2.7) * Math.min(innerWidth, innerHeight) / pp.z;
+  const r = s.size * (quality === 0 ? 2.1 : 1.65) * Math.min(innerWidth, innerHeight) / pp.z;
   const g = ctx.createRadialGradient(pp.x, pp.y, 0, pp.x, pp.y, r * 2.4);
   g.addColorStop(0, rgba(rgb, alpha));
   g.addColorStop(0.55, rgba(rgb, alpha * 0.22));
@@ -301,7 +369,7 @@ function render() {
   drawProjectorHardware();
   ctx.fillStyle = 'rgba(235,245,255,0.82)';
   ctx.font = '12px system-ui, sans-serif';
-  ctx.fillText(mode === 1 ? 'tobbszorosen megvilagitott fustreszecskek' : mode === 2 ? 'a vetitett kep csak a fustben jelenik meg' : 'fustgepbol aramlo, megvilagitott fust', 14, h - 70);
+  ctx.fillText(mode === 1 ? 'a mozgó szobor tobbszorosen megvilagitott fustpontjai' : mode === 2 ? 'a vetitett szobor csak a fustben jelenik meg' : 'mozgó 3D szobor a fustben', 14, h - 70);
 }
 
 function animate(now = performance.now()) {
