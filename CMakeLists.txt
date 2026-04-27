@@ -1,8 +1,9 @@
 # =============================================================================
 # projekt: assoc-ogre
 # =============================================================================
-# Egyetlen cél: `assoc` futtatható, Ogre3D 14 (Bites) + RTShader demó.
-# A jelenet asset-mentes: ManualObject víz + moduláris napelemes katamarán.
+# Ket kulon futtathato Ogre3D demo:
+#   assoc      - asset-mentes modularis napelemes katamaran
+#   projectors - asset-mentes projektor + fust/fenykup jelenet
 # Build:
 #   cmake -S . -B build -DOGRE_SDK=/usr
 #   cmake --build build
@@ -39,11 +40,20 @@ file(COPY "${CMAKE_SOURCE_DIR}/cfg/ogre.cfg" DESTINATION "${CMAKE_BINARY_DIR}")
 add_executable(assoc
   src/AssocApp.cpp)
 
+add_executable(projectors
+  src/ProjectorApp.cpp)
+
 target_link_libraries(assoc PRIVATE OgreBites)
 target_include_directories(assoc PRIVATE ${OGRE_INCLUDE_DIR})
+target_link_libraries(projectors PRIVATE OgreBites)
+target_include_directories(projectors PRIVATE ${OGRE_INCLUDE_DIR})
 
 # futasidoben: shared library-k es cfg a mellett
 set_target_properties(assoc PROPERTIES
+  BUILD_RPATH "${OGRE_SDK}/lib;${OGRE_PLUGIN_DIR}"
+  BUILD_WITH_INSTALL_RPATH FALSE)
+
+set_target_properties(projectors PROPERTIES
   BUILD_RPATH "${OGRE_SDK}/lib;${OGRE_PLUGIN_DIR}"
   BUILD_WITH_INSTALL_RPATH FALSE)
 

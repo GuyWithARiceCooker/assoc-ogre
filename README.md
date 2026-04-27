@@ -1,10 +1,12 @@
 # assoc-ogre
 
-Kis Ogre3D 14 (Bites) + RTShader demo: konnyu, asset-mentes, vizen uszo
-modularis napelemes katamaran. A hajotestek ManualObject geometriabol epulnek,
-kulso mesh/textura nelkul, hogy Linuxon/Archon es regi, 4 GB RAM-os gepen is
-visszafogottan fusson. A jelenetben 3D projektorok, fustgep, lattathato
-fenykupok es fustben kirajzolodo fenycsikok is vannak.
+Ket kulon Ogre3D 14 (Bites) + RTShader demo, mindketto konnyu es asset-mentes:
+
+- `assoc`: vizen uszo modularis napelemes katamaran
+- `projectors`: kulon projektoros/fustgepes fenyjelenet
+
+Mindket demo ManualObject geometriabol epul, kulso mesh/textura nelkul, hogy
+Linuxon/Archon es regi, 4 GB RAM-os gepen is visszafogottan fusson.
 
 ## Fuggosegek
 
@@ -37,6 +39,7 @@ Helyi Ogre install utan:
 ```bash
 OGRE_PLUGIN_DIR=.deps/ogre-14/lib/OGRE ./scripts/build-arch.sh .deps/ogre-14
 ./scripts/run-linux.sh .deps/ogre-14
+./scripts/run-projectors.sh .deps/ogre-14
 ```
 
 A script az elso argumentumot `OGRE_SDK` prefixkent hasznalja, es ha nem adsz meg
@@ -45,15 +48,25 @@ A script az elso argumentumot `OGRE_SDK` prefixkent hasznalja, es ha nem adsz me
 
 A futtatashoz a generalt `build/plugins.cfg` es `build/resources.cfg` kell:
 
+Katamaran:
+
 ```bash
 cd build
 ./assoc
+```
+
+Projektor/fust:
+
+```bash
+cd build
+./projectors
 ```
 
 Ha helyi `.deps/ogre-14` SDK-val forditottad, hasznald inkabb:
 
 ```bash
 ./scripts/run-linux.sh .deps/ogre-14
+./scripts/run-projectors.sh .deps/ogre-14
 ```
 
 A futtato script Wayland/GNOME alatt alapbol XWayland/X11 SDL backenddel indul
@@ -77,7 +90,7 @@ Gyenge GPU-n kisebb ablak:
 ASSOC_VIDEO_MODE="800 x 600" ./scripts/run-linux.sh .deps/ogre-14
 ```
 
-Billentyuk:
+Katamaran billentyuk:
 
 - `W` / `Fel`: elore gyorsitas
 - `S` / `Le`: hatra/lassitas
@@ -86,6 +99,13 @@ Billentyuk:
 - `C`: koveto kamera / fix cinematic kamera valtasa
 - `R`: hajo es kamera reset
 - `Space`: a harom hajotest szet-/osszedokkolasa
+- `Esc`: kilepes
+
+Projektoros demo:
+
+- fustgep + 3 projektor kulon jelenetben
+- attetszo 3D fenykupok mutatjak, honnan jon ki a feny
+- Ogre spotlightok valodi fenyforraskent vilagitanak a geometriara
 - `Esc`: kilepes
 
 ## Arch Linux / regi MacBook 2009 late cel
@@ -113,7 +133,7 @@ Kimeletes beallitasok a regi, 4 GB RAM-os gephez:
 - FSAA=0, VSync=Yes
 - nincs arnyek, nincs post-process, nincs textura/mesh sample media
 - a viz, hajo, egbolt, projektorok, fust es fenykupok alacsony poligonszamu
-  ManualObject elemek
+  ManualObject elemek, de kulon binarisokban
 
 Ha gyenge az iGPU, inditas utan az `build/ogre.cfg` fajlban meg lejjebb veheted
 a `Video Mode` sort peldaul `800 x 600`-ra.
