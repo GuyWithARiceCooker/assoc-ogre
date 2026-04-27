@@ -11,7 +11,7 @@ let orbit = true;
 let quality = matchMedia('(pointer: coarse), (max-width: 720px)').matches ? 0 : 1;
 let time = 0;
 let last = performance.now();
-let cameraAngle = -0.55;
+let cameraAngle = -0.22;
 let smoke = [];
 let frameNo = 0;
 
@@ -83,24 +83,29 @@ function project(p) {
 
 function randn() { return Math.random() * 2 - 1; }
 function randomSmokePoint() {
-  // Rejection sample an ellipsoid so the cloud has real volume, not a flat sheet.
-  for (;;) {
-    const p = { x: randn() * 62, y: 16 + randn() * 32, z: randn() * 62 };
-    const qx = p.x / 62, qy = (p.y - 16) / 34, qz = p.z / 62;
-    if (qx*qx + qy*qy + qz*qz <= 1) return p;
-  }
+  // Smoke is emitted from a smoke machine/nozzle at the lower-left/front side,
+  // then it drifts into the invisible projection volume.
+  return {
+    x: -34 + randn() * 5,
+    y: 3 + Math.random() * 4,
+    z: 28 + randn() * 6
+  };
 }
 function seedSmoke() {
-  const count = quality === 0 ? 220 : quality === 1 ? 360 : 560;
+  const count = quality === 0 ? 260 : quality === 1 ? 430 : 680;
   smoke = [];
   for (let i = 0; i < count; i++) {
     const p = randomSmokePoint();
+    const warm = Math.random();
+    p.x += warm * 42 + randn() * (2 + warm * 14);
+    p.y += warm * 24 + randn() * (1 + warm * 8);
+    p.z -= warm * 34 + randn() * (2 + warm * 14);
     smoke.push({
       p,
-      age: Math.random(),
+      age: warm * 5,
       life: 5 + Math.random() * 8,
       seed: Math.random() * 1000,
-      size: 0.75 + Math.random() * 1.15,
+      size: 0.85 + Math.random() * 1.55,
       density: 0.25 + Math.random() * 0.55,
     });
   }
@@ -108,12 +113,18 @@ function seedSmoke() {
 seedSmoke();
 
 function flowVelocity(p, seed, tt) {
-  // Cheap curl-ish field: horizontal swirl + slow upward thermal drift.
+  // Plume flow: smoke machine pushes toward the projection volume, then
+  // buoyancy and curl spread it into a living cloud.
   const cx = p.x * 0.035, cy = p.y * 0.045, cz = p.z * 0.035;
+  const target = { x: 6, y: 20, z: -4 };
+  const toCenter = norm(sub(target, p));
   const a = Math.sin(cz * 2.1 + tt * 0.7 + seed) + Math.cos(cy * 1.3 - tt * 0.45);
   const b = Math.cos(cx * 1.8 - tt * 0.55 + seed * 0.7) + Math.sin(cz * 1.2 + tt * 0.35);
-  const swirl = { x: -p.z * 0.018 + a * 1.2, y: 0.55 + Math.sin(cx + cz + tt) * 0.35, z: p.x * 0.018 + b * 1.2 };
-  return swirl;
+  return {
+    x: toCenter.x * 2.0 + (-p.z * 0.010 + a * 0.9),
+    y: 0.95 + toCenter.y * 1.0 + Math.sin(cx + cz + tt) * 0.30,
+    z: toCenter.z * 2.0 + (p.x * 0.010 + b * 0.9)
+  };
 }
 function updateSmoke(dt) {
   for (const s of smoke) {
@@ -123,10 +134,9 @@ function updateSmoke(dt) {
     s.p.y += v.y * dt * 4.0;
     s.p.z += v.z * dt * 5.0;
     // Soft containment. Escaped/old particles respawn at the bottom-ish of the cloud.
-    const qx = s.p.x / 72, qy = (s.p.y - 18) / 42, qz = s.p.z / 72;
-    if (qx*qx + qy*qy + qz*qz > 1.35 || s.age > s.life) {
+    const qx = s.p.x / 82, qy = (s.p.y - 18) / 48, qz = s.p.z / 82;
+    if (qx*qx + qy*qy + qz*qz > 1.65 || s.p.y > 58 || s.age > s.life) {
       s.p = randomSmokePoint();
-      s.p.y -= 12 * Math.random();
       s.age = 0;
       s.life = 5 + Math.random() * 8;
       s.seed = Math.random() * 1000;
@@ -135,8 +145,8 @@ function updateSmoke(dt) {
 }
 
 function particleDensity(s) {
-  const qx = s.p.x / 66, qy = (s.p.y - 16) / 38, qz = s.p.z / 66;
-  const ellipsoid = 1 - smoothStep(0.86, 1.22, qx*qx + qy*qy + qz*qz);
+  const qx = s.p.x / 78, qy = (s.p.y - 18) / 45, qz = s.p.z / 78;
+  const ellipsoid = 1 - smoothStep(0.92, 1.35, qx*qx + qy*qy + qz*qz);
   const fade = smoothStep(0.0, 0.8, s.age) * (1 - smoothStep(s.life - 1.6, s.life, s.age));
   const wisp = 0.75 + 0.25 * Math.sin(s.p.x * 0.08 + s.p.z * 0.06 + s.seed + time * 0.8);
   return Math.max(0, ellipsoid * fade * wisp * s.density * 0.62);
@@ -154,11 +164,11 @@ function projectorLightAt(p) {
     const u = dot(d, proj.right) / (z * fovScale);
     const v = dot(d, proj.up) / (z * fovScale);
     if (Math.abs(u) > 1 || Math.abs(v) > 1) continue;
-    const img = pattern(u, v, proj.id);
-    if (img <= 0.01) continue;
+    const imgPattern = pattern(u, v, proj.id);
+    const img = 0.12 + imgPattern * 0.88; // full projected image frame, with brighter image content
     const edge = 1 - smoothStep(0.78, 1.0, Math.max(Math.abs(u), Math.abs(v)));
     const distAtten = 1 / (1 + 0.00085 * dot(d, d));
-    const contrib = img * edge * distAtten * 9.0;
+    const contrib = img * edge * distAtten * 8.5;
     rgb[0] += proj.color[0] * contrib;
     rgb[1] += proj.color[1] * contrib;
     rgb[2] += proj.color[2] * contrib;
@@ -182,18 +192,18 @@ function drawParticle(s) {
   const pp = project(s.p);
   if (pp.z <= 1) return;
 
-  if (light.energy <= 0.005) return;
+  if (light.energy <= 0.0035) return;
   let rgb = light.rgb;
-  let alpha = Math.min(0.52, dens * Math.pow(light.energy, 0.78) * 0.58);
+  let alpha = Math.min(0.46, dens * Math.pow(light.energy, 0.72) * 0.56);
   if (mode === 1) {
     const multi = smoothStep(0.8, 2.15, light.hits);
     rgb = [rgb[0] * 0.28 + 255 * multi, rgb[1] * 0.25 + 225 * multi, rgb[2] * 0.20 + 70 * multi];
-    alpha = Math.min(0.46, alpha + multi * 0.22);
+    alpha = Math.min(0.50, alpha + multi * 0.18);
   } else if (mode === 2) {
     alpha = Math.min(0.42, alpha * 1.7);
   }
 
-  const r = s.size * (quality === 0 ? 3.1 : 2.35) * Math.min(innerWidth, innerHeight) / pp.z;
+  const r = s.size * (quality === 0 ? 3.4 : 2.7) * Math.min(innerWidth, innerHeight) / pp.z;
   const g = ctx.createRadialGradient(pp.x, pp.y, 0, pp.x, pp.y, r * 2.4);
   g.addColorStop(0, rgba(rgb, alpha));
   g.addColorStop(0.55, rgba(rgb, alpha * 0.22));
@@ -202,6 +212,27 @@ function drawParticle(s) {
   ctx.beginPath(); ctx.arc(pp.x, pp.y, r * 2.4, 0, Math.PI * 2); ctx.fill();
 
 }
+
+function drawSmokeMachine() {
+  // The only visible hardware: a small smoke machine/nozzle feeding the plume.
+  const base = project({ x: -36, y: 1.5, z: 30 });
+  const nozzle = project({ x: -28, y: 5.5, z: 24 });
+  if (base.z <= 1 || nozzle.z <= 1) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(20,26,34,0.92)';
+  ctx.strokeStyle = 'rgba(120,150,180,0.25)';
+  ctx.lineWidth = 1;
+  const w = Math.max(22, 1800 / base.z);
+  const h = Math.max(10, 700 / base.z);
+  ctx.beginPath();
+  ctx.roundRect(base.x - w * 0.5, base.y - h * 0.5, w, h, 4);
+  ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = 'rgba(160,190,210,0.55)';
+  ctx.lineWidth = Math.max(2, 160 / base.z);
+  ctx.beginPath(); ctx.moveTo(base.x + w * 0.25, base.y - h * 0.25); ctx.lineTo(nozzle.x, nozzle.y); ctx.stroke();
+  ctx.restore();
+}
+
 function drawProjectorIcons() {
   for (const proj of projectorFrames) {
     const pp = project(proj.pos);
@@ -222,7 +253,7 @@ function render() {
   for (const s of sorted) drawParticle(s);
   ctx.fillStyle = 'rgba(235,245,255,0.82)';
   ctx.font = '12px system-ui, sans-serif';
-  ctx.fillText(mode === 1 ? 'csak a tobbszorosen megvilagitott fustreszecskek erosodnek' : mode === 2 ? 'vetitett fenymintak csak a fustben latszanak' : 'csak a projektorfeny altal megvilagitott fust latszik', 14, h - 70);
+  ctx.fillText(mode === 1 ? 'tobbszorosen megvilagitott fustreszecskek' : mode === 2 ? 'a vetitett kep csak a fustben jelenik meg' : 'fustgepbol aramlo, megvilagitott fust', 14, h - 70);
 }
 
 function animate(now = performance.now()) {
