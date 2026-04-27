@@ -77,18 +77,15 @@
       button { min-height: 40px; padding: 9px 5px; font-size: 11px; }
     }
   </style>
-  <script type="importmap">
-    { "imports": { "three": "https://unpkg.com/three@0.164.1/build/three.module.js" } }
-  </script>
 </head>
 <body>
   <div id="hud">
     <h1>4 projektor + fust</h1>
-    <p><b>Mobil shader</b>: a fust minden pontjan szamolja a 4 projektor kepfenyet.</p>
+    <p><b>Mobil nezet</b>: lathato, gyors 2D vetitesi modell telefonra optimalizalva.</p>
     <p><b>Fenyosszeadas</b>: ahol tobb projektor kepmintaja ugyanazt a fustpontot eri, ott a feny egy kozegben adodik ossze.</p>
     <p class="keys">Erintsd: Normal / Osszeg / Sugarak / Orbit / Minoseg</p>
   </div>
-  <div id="badge">WebGL volumetric</div>
+  <div id="badge">mobile canvas</div>
   <div id="controls" aria-label="demo controls">
     <button data-mode="0" class="active">Normal</button>
     <button data-mode="1">Osszeg</button>
@@ -96,6 +93,6 @@
     <button id="orbitBtn" class="active">Orbit</button>
     <button id="qualityBtn">Low</button>
   </div>
-  <script type="module" src="./main.js?v=mobile2"></script>
+  <script src="./main.js?v=mobile3"></script>
 </body>
 </html>
