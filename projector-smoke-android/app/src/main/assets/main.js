@@ -262,7 +262,7 @@ function drawParticle(s) {
 
   if (light.energy <= 0.0035) return;
   let rgb = light.rgb;
-  let alpha = Math.min(0.62, dens * Math.pow(light.energy, 0.68) * 0.86);
+  let alpha = Math.min(0.38, dens * Math.pow(light.energy, 0.68) * 0.42);
   if (mode === 1) {
     const multi = smoothStep(0.8, 2.15, light.hits);
     rgb = [rgb[0] * 0.28 + 255 * multi, rgb[1] * 0.25 + 225 * multi, rgb[2] * 0.20 + 70 * multi];
@@ -357,6 +357,73 @@ function drawProjectorHardware() {
   }
 }
 
+
+function drawLitSculptureSmoke() {
+  // Dense illuminated smoke samples along the projected moving 3D sculpture.
+  // These are still smoke samples, not empty-air rays or a solid mesh.
+  const samples = quality === 0 ? 120 : quality === 1 ? 190 : 280;
+  for (let i = 0; i < samples; i++) {
+    const t01 = i / (samples - 1);
+    const t = -Math.PI * 1.15 + t01 * Math.PI * 2.3;
+    for (let strand = 0; strand < 2; strand++) {
+      const phase = time * 0.95 + strand * Math.PI;
+      const r = strand === 0 ? 18.0 : 11.5;
+      const jitter = Math.sin(i * 12.989 + strand * 78.23 + time) * 0.9;
+      const pnt = {
+        x: 5 + Math.sin(t + phase) * r + Math.sin(t * 3.0 + time) * 2.0 + jitter,
+        y: 22 + (t / Math.PI) * 19.0 + Math.sin(t * 2.0 + phase) * 2.0,
+        z: -2 + Math.cos(t * 1.25 + phase * 0.8) * (strand === 0 ? 13.0 : 8.0) + Math.cos(t * 4.0 - time) * 1.4
+      };
+      const light = projectorLightAt(pnt);
+      if (light.energy <= 0.002) continue;
+      const pp = project(pnt);
+      if (pp.z <= 1) continue;
+      const localPulse = 0.75 + 0.25 * Math.sin(time * 3.0 + i * 0.19 + strand);
+      const rgb = [
+        light.rgb[0] * 0.85 + 42,
+        light.rgb[1] * 0.85 + 42,
+        light.rgb[2] * 0.85 + 46
+      ];
+      const alpha = Math.min(0.72, (0.20 + light.energy * 0.42) * localPulse);
+      const radius = (strand === 0 ? 2.2 : 1.7) * Math.min(innerWidth, innerHeight) / pp.z;
+      const g = ctx.createRadialGradient(pp.x, pp.y, 0, pp.x, pp.y, radius * 2.8);
+      g.addColorStop(0, rgba(rgb, alpha));
+      g.addColorStop(0.45, rgba(rgb, alpha * 0.36));
+      g.addColorStop(1, rgba(rgb, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(pp.x, pp.y, radius * 2.8, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // A few cross ribs make the volume read as a sculpture instead of random smoke.
+  for (let j = 0; j < 10; j++) {
+    const t = -Math.PI + (j / 9) * Math.PI * 2 + time * 0.25;
+    const a = {
+      x: 5 + Math.sin(t + time * 0.95) * 18,
+      y: 22 + (t / Math.PI) * 17,
+      z: -2 + Math.cos(t * 1.25 + time * 0.76) * 13
+    };
+    const b = {
+      x: 5 + Math.sin(t + time * 0.95 + Math.PI) * 11.5,
+      y: a.y + Math.sin(t * 2.0) * 2,
+      z: -2 + Math.cos(t * 1.25 + time * 0.76 + Math.PI) * 8
+    };
+    drawSmokeSegment(a, b, [230, 235, 210], 0.11);
+  }
+}
+
+function drawSmokeSegment(a, b, color, alpha) {
+  const pa = project(a), pb = project(b);
+  if (pa.z <= 1 || pb.z <= 1) return;
+  const grad = ctx.createLinearGradient(pa.x, pa.y, pb.x, pb.y);
+  grad.addColorStop(0, rgba(color, 0));
+  grad.addColorStop(0.5, rgba(color, alpha));
+  grad.addColorStop(1, rgba(color, 0));
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = Math.max(1, 260 / Math.max(pa.z, pb.z));
+  ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+}
+
 function render() {
   const w = innerWidth, h = innerHeight;
   ctx.clearRect(0, 0, w, h);
@@ -366,6 +433,7 @@ function render() {
   drawSmokeMachine();
   const sorted = smoke.slice().sort((a, b) => project(b.p).z - project(a.p).z);
   for (const s of sorted) drawParticle(s);
+  drawLitSculptureSmoke();
   drawProjectorHardware();
   ctx.fillStyle = 'rgba(235,245,255,0.82)';
   ctx.font = '12px system-ui, sans-serif';
