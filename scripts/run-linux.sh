@@ -16,7 +16,7 @@ export LD_LIBRARY_PATH="${OGRE_SDK}/lib:${LD_LIBRARY_PATH:-}"
 
 # Ogre GL3Plus built without OGRE_USE_WAYLAND cannot accept SDL Wayland native
 # handles. Prefer X11/XWayland on GNOME Wayland unless explicitly overridden.
-if [[ -n "${WAYLAND_DISPLAY:-}" && -n "${DISPLAY:-}" && -z "${SDL_VIDEODRIVER:-}" ]]; then
+if [[ "${ASSOC_ALLOW_WAYLAND:-0}" != "1" && -n "${WAYLAND_DISPLAY:-}" && -n "${DISPLAY:-}" ]]; then
   export SDL_VIDEODRIVER=x11
 fi
 

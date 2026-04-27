@@ -55,13 +55,14 @@ Ha helyi `.deps/ogre-14` SDK-val forditottad, hasznald inkabb:
 ./scripts/run-linux.sh .deps/ogre-14
 ```
 
-A futtato script Wayland/GNOME alatt alapbol XWayland/X11 SDL backenddel probal
-indulni (`SDL_VIDEODRIVER=x11`), mert a helyi minimalis Ogre build Wayland nelkuli
-X11/EGL GL3Plus utvonalra van optimalizalva. Ha SDL megis Wayland ablakot ad at
+A futtato script Wayland/GNOME alatt alapbol XWayland/X11 SDL backenddel indul
+(`SDL_VIDEODRIVER=x11`), mert a helyi minimalis Ogre build Wayland nelkuli
+X11/EGL GL3Plus utvonalra van optimalizalva. Ha SDL Wayland ablakot ad at
 Ogre-nek, ilyen assert johet: `externalWlDisplay ... Recompile with
-OGRE_USE_WAYLAND=ON`. A binaris is megprobalja meg indulas elott X11-re allitani
-az SDL-t, de a script hasznalata a biztosabb. Ha direkt Waylandet akarsz tesztelni,
-Ogre-t Wayland tamogatassal kell ujraepiteni:
+OGRE_USE_WAYLAND=ON`. A binaris indulas elott akkor is X11-re allitja az SDL-t,
+ha a kornyezetben `SDL_VIDEODRIVER=wayland` maradt, kiveve ha kifejezetten
+`ASSOC_FORCE_X11=0` van megadva. Ha direkt Waylandet akarsz tesztelni, Ogre-t
+Wayland tamogatassal kell ujraepiteni:
 
 ```bash
 OGRE_USE_WAYLAND=ON ./scripts/install-ogre-local.sh

@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstring>
 #include <cstdlib>
 #include <vector>
 
@@ -31,10 +32,13 @@ namespace
     {
         // Ogre built without OGRE_USE_WAYLAND cannot accept SDL-created Wayland
         // native windows. Prefer XWayland when GNOME exposes both displays.
-        if (!std::getenv("SDL_VIDEODRIVER") && !std::getenv("ASSOC_ALLOW_WAYLAND") &&
-            std::getenv("WAYLAND_DISPLAY") && std::getenv("DISPLAY"))
+        const char* const forceX11 = std::getenv("ASSOC_FORCE_X11");
+        const char* const sdlDriver = std::getenv("SDL_VIDEODRIVER");
+        const bool explicitlyAllowWayland = forceX11 && std::strcmp(forceX11, "0") == 0;
+        const bool sdlWouldUseWayland = !sdlDriver || std::strcmp(sdlDriver, "wayland") == 0;
+        if (!explicitlyAllowWayland && sdlWouldUseWayland && std::getenv("WAYLAND_DISPLAY") && std::getenv("DISPLAY"))
         {
-            setenv("SDL_VIDEODRIVER", "x11", 0);
+            setenv("SDL_VIDEODRIVER", "x11", 1);
         }
     }
 
