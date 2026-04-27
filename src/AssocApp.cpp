@@ -18,7 +18,7 @@
 #include "OgreInput.h"
 #include "OgreRTShaderSystem.h"
 #include "OgrePlane.h"
-#include "OgreSubentity.h"
+#include "OgreSubEntity.h"
 #include "OgreTechnique.h"
 #include "OgreFont.h"
 #include "OgreFontManager.h"
@@ -27,12 +27,161 @@
 #include "OgreResourceGroupManager.h"
 #include "OgreTextureUnitState.h"
 
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <vector>
 
 namespace
 {
+    Ogre::MaterialPtr makeLitMaterial(Ogre::String const& name, Ogre::ColourValue const& diffuse,
+        Ogre::ColourValue const& specular = Ogre::ColourValue(0.12f, 0.1f, 0.07f, 1.0f),
+        Ogre::Real shininess = 12.0f)
+    {
+        Ogre::MaterialPtr material{Ogre::MaterialManager::getSingleton().create(
+            name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME)};
+        Ogre::Pass* const pass{material->getTechnique(0)->getPass(0)};
+        pass->setLightingEnabled(true);
+        pass->setDiffuse(diffuse);
+        pass->setAmbient(diffuse * 0.42f);
+        pass->setSpecular(specular);
+        pass->setShininess(shininess);
+        return material;
+    }
+
+    void addQuad(Ogre::ManualObject* const mo, Ogre::Vector3 const& a, Ogre::Vector3 const& b,
+        Ogre::Vector3 const& c, Ogre::Vector3 const& d, Ogre::Vector3 const& normal)
+    {
+        mo->position(a);
+        mo->normal(normal);
+        mo->position(b);
+        mo->normal(normal);
+        mo->position(c);
+        mo->normal(normal);
+        mo->position(a);
+        mo->normal(normal);
+        mo->position(c);
+        mo->normal(normal);
+        mo->position(d);
+        mo->normal(normal);
+    }
+
+    void addBox(Ogre::SceneManager* const scene, Ogre::SceneNode* const parent, Ogre::String const& name,
+        Ogre::Vector3 const& centre, Ogre::Vector3 const& size, Ogre::Material const& material)
+    {
+        Ogre::Vector3 const h{size * 0.5f};
+        Ogre::Vector3 const v[8] = {
+            centre + Ogre::Vector3(-h.x, -h.y, -h.z), centre + Ogre::Vector3(h.x, -h.y, -h.z),
+            centre + Ogre::Vector3(h.x, h.y, -h.z), centre + Ogre::Vector3(-h.x, h.y, -h.z),
+            centre + Ogre::Vector3(-h.x, -h.y, h.z), centre + Ogre::Vector3(h.x, -h.y, h.z),
+            centre + Ogre::Vector3(h.x, h.y, h.z), centre + Ogre::Vector3(-h.x, h.y, h.z)};
+
+        Ogre::ManualObject* const mo{scene->createManualObject(name)};
+        mo->begin(material.getName(), Ogre::RenderOperation::OT_TRIANGLE_LIST);
+        addQuad(mo, v[4], v[5], v[6], v[7], Ogre::Vector3::UNIT_Z);
+        addQuad(mo, v[1], v[0], v[3], v[2], Ogre::Vector3::NEGATIVE_UNIT_Z);
+        addQuad(mo, v[0], v[4], v[7], v[3], Ogre::Vector3::NEGATIVE_UNIT_X);
+        addQuad(mo, v[5], v[1], v[2], v[6], Ogre::Vector3::UNIT_X);
+        addQuad(mo, v[3], v[7], v[6], v[2], Ogre::Vector3::UNIT_Y);
+        addQuad(mo, v[0], v[1], v[5], v[4], Ogre::Vector3::NEGATIVE_UNIT_Y);
+        mo->end();
+
+        Ogre::SceneNode* const node{parent->createChildSceneNode(name + "_node")};
+        node->attachObject(mo);
+    }
+
+    void addHalfBamboo(Ogre::SceneManager* const scene, Ogre::SceneNode* const parent, Ogre::String const& name,
+        Ogre::Vector3 const& centre, Ogre::Real const length, Ogre::Real const radius, Ogre::Degree const angle,
+        Ogre::Material const& material)
+    {
+        Ogre::ManualObject* const mo{scene->createManualObject(name)};
+        mo->begin(material.getName(), Ogre::RenderOperation::OT_TRIANGLE_LIST);
+
+        constexpr int segments{14};
+        Ogre::Real const halfLength{length * 0.5f};
+        for (int i = 0; i < segments; ++i)
+        {
+            Ogre::Real const t0{Ogre::Math::PI * static_cast<Ogre::Real>(i) / segments};
+            Ogre::Real const t1{Ogre::Math::PI * static_cast<Ogre::Real>(i + 1) / segments};
+            Ogre::Vector3 const p0{-radius * std::cos(t0), -halfLength, radius * std::sin(t0)};
+            Ogre::Vector3 const p1{-radius * std::cos(t1), -halfLength, radius * std::sin(t1)};
+            Ogre::Vector3 const p2{-radius * std::cos(t1), halfLength, radius * std::sin(t1)};
+            Ogre::Vector3 const p3{-radius * std::cos(t0), halfLength, radius * std::sin(t0)};
+            Ogre::Vector3 const n0{-std::cos(t0), 0.0f, std::sin(t0)};
+            Ogre::Vector3 const n1{-std::cos(t1), 0.0f, std::sin(t1)};
+
+            mo->position(p0);
+            mo->normal(n0.normalisedCopy());
+            mo->position(p1);
+            mo->normal(n1.normalisedCopy());
+            mo->position(p2);
+            mo->normal(n1.normalisedCopy());
+            mo->position(p0);
+            mo->normal(n0.normalisedCopy());
+            mo->position(p2);
+            mo->normal(n1.normalisedCopy());
+            mo->position(p3);
+            mo->normal(n0.normalisedCopy());
+        }
+        addQuad(mo, Ogre::Vector3(radius, -halfLength, 0.0f), Ogre::Vector3(-radius, -halfLength, 0.0f),
+            Ogre::Vector3(-radius, halfLength, 0.0f), Ogre::Vector3(radius, halfLength, 0.0f),
+            Ogre::Vector3::NEGATIVE_UNIT_Z);
+        mo->end();
+
+        Ogre::SceneNode* const node{parent->createChildSceneNode(name + "_node", centre)};
+        node->roll(angle);
+        node->attachObject(mo);
+    }
+
+    void addBambooJoint(Ogre::SceneManager* const scene, Ogre::SceneNode* const parent, Ogre::String const& name,
+        Ogre::Vector3 const& centre, Ogre::Real const width, Ogre::Real const radius, Ogre::Degree const angle,
+        Ogre::Material const& material)
+    {
+        addHalfBamboo(scene, parent, name, centre, width, radius * 1.08f, angle, material);
+    }
+
+    void addDiagonalBambooWall(Ogre::SceneManager* const scene, Ogre::SceneNode* const parent,
+        Ogre::Material const& woodMat, Ogre::Material const& darkWoodMat, Ogre::Material const& bambooMat,
+        Ogre::Material const& bambooAltMat, Ogre::Material const& jointMat)
+    {
+        Ogre::SceneNode* const wall{parent->createChildSceneNode("bamboo_wall", Ogre::Vector3(0.0f, 34.0f, 0.0f))};
+
+        addBox(scene, wall, "left_post", Ogre::Vector3(-112.0f, 0.0f, 0.0f), Ogre::Vector3(11.0f, 82.0f, 11.0f), woodMat);
+        addBox(scene, wall, "right_post", Ogre::Vector3(112.0f, 0.0f, 0.0f), Ogre::Vector3(11.0f, 82.0f, 11.0f), woodMat);
+        addBox(scene, wall, "left_post_shadow", Ogre::Vector3(-108.7f, 0.0f, 5.9f), Ogre::Vector3(2.0f, 76.0f, 1.8f), darkWoodMat);
+        addBox(scene, wall, "right_post_shadow", Ogre::Vector3(115.3f, 0.0f, 5.9f), Ogre::Vector3(2.0f, 76.0f, 1.8f), darkWoodMat);
+        addBox(scene, wall, "top_rail", Ogre::Vector3(0.0f, 36.0f, -1.0f), Ogre::Vector3(212.0f, 5.0f, 7.0f), darkWoodMat);
+        addBox(scene, wall, "bottom_rail", Ogre::Vector3(0.0f, -36.0f, -1.0f), Ogre::Vector3(212.0f, 5.0f, 7.0f), darkWoodMat);
+        addBox(scene, wall, "left_foot", Ogre::Vector3(-112.0f, -45.0f, 0.0f), Ogre::Vector3(22.0f, 6.0f, 15.0f), darkWoodMat);
+        addBox(scene, wall, "right_foot", Ogre::Vector3(112.0f, -45.0f, 0.0f), Ogre::Vector3(22.0f, 6.0f, 15.0f), darkWoodMat);
+
+        constexpr Ogre::Real length{106.0f};
+        constexpr Ogre::Real radius{3.0f};
+        int id{0};
+        for (Ogre::Real x = -72.0f; x <= 72.0f; x += 24.0f)
+        {
+            Ogre::Material const& mat{(id % 2 == 0) ? bambooMat : bambooAltMat};
+            addHalfBamboo(scene, wall, "bamboo_diag_a_" + Ogre::StringConverter::toString(id),
+                Ogre::Vector3(x, 0.0f, 4.8f), length, radius, Ogre::Degree(-25.0f), mat);
+            addHalfBamboo(scene, wall, "bamboo_diag_b_" + Ogre::StringConverter::toString(id),
+                Ogre::Vector3(x, 0.0f, 8.8f), length, radius, Ogre::Degree(25.0f), mat);
+            for (Ogre::Real offset : {-28.0f, 0.0f, 28.0f})
+            {
+                addBambooJoint(scene, wall, "joint_a_" + Ogre::StringConverter::toString(id) + "_" +
+                        Ogre::StringConverter::toString(static_cast<int>(offset + 30.0f)),
+                    Ogre::Vector3(x + std::sin(Ogre::Degree(-25.0f).valueRadians()) * offset,
+                        std::cos(Ogre::Degree(-25.0f).valueRadians()) * offset, 5.4f),
+                    3.0f, radius, Ogre::Degree(-25.0f), jointMat);
+                addBambooJoint(scene, wall, "joint_b_" + Ogre::StringConverter::toString(id) + "_" +
+                        Ogre::StringConverter::toString(static_cast<int>(offset + 30.0f)),
+                    Ogre::Vector3(x + std::sin(Ogre::Degree(25.0f).valueRadians()) * offset,
+                        std::cos(Ogre::Degree(25.0f).valueRadians()) * offset, 9.4f),
+                    3.0f, radius, Ogre::Degree(25.0f), jointMat);
+            }
+            ++id;
+        }
+    }
+
     /** A `OgreBites::TextAreaOverlayElement` lépésképlete (overlay), világ-méretre `h` magassággal. */
     Ogre::Real measure3DLineWidth(Ogre::Font& font, const std::vector<std::uint32_t>& cps, Ogre::Real h)
     {
@@ -173,7 +322,7 @@ public:
         rim->setSpotlightRange(Ogre::Degree(20.0f), Ogre::Degree(45.0f));
 
         mCamNode = mScene->getRootSceneNode()->createChildSceneNode("cam");
-        mCamNode->setPosition(0.0f, 48.0f, 195.0f);
+        mCamNode->setPosition(0.0f, 48.0f, 270.0f);
         mCam = mScene->createCamera("main");
         mCam->setNearClipDistance(0.1f);
         mCam->setFarClipDistance(2000.0f);
@@ -203,18 +352,30 @@ public:
         mHead = mScene->createEntity("assocHeadL", "ogrehead.mesh",
             Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
         mHeadNode = mScene->getRootSceneNode()->createChildSceneNode("headL",
-            Ogre::Vector3(-72.0f, 18.0f, 15.0f));
-        mHeadNode->setScale(0.6f, 0.6f, 0.6f);
+            Ogre::Vector3(-145.0f, 16.0f, 8.0f));
+        mHeadNode->setScale(0.42f, 0.42f, 0.42f);
         mHeadNode->yaw(Ogre::Degree(25.0f));
         mHeadNode->attachObject(mHead);
 
         mHead2 = mScene->createEntity("assocHeadR", "ogrehead.mesh",
             Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
         mHeadNode2 = mScene->getRootSceneNode()->createChildSceneNode("headR",
-            Ogre::Vector3(72.0f, 18.0f, 12.0f));
-        mHeadNode2->setScale(0.5f, 0.5f, 0.5f);
+            Ogre::Vector3(145.0f, 16.0f, 8.0f));
+        mHeadNode2->setScale(0.38f, 0.38f, 0.38f);
         mHeadNode2->yaw(Ogre::Degree(-30.0f));
         mHeadNode2->attachObject(mHead2);
+
+        Ogre::MaterialPtr const woodMat{makeLitMaterial("assoc/warmWood", Ogre::ColourValue(0.47f, 0.28f, 0.11f))};
+        Ogre::MaterialPtr const darkWoodMat{
+            makeLitMaterial("assoc/darkWood", Ogre::ColourValue(0.19f, 0.11f, 0.045f))};
+        Ogre::MaterialPtr const bambooMat{
+            makeLitMaterial("assoc/goldBamboo", Ogre::ColourValue(0.86f, 0.63f, 0.18f), Ogre::ColourValue(0.55f, 0.42f, 0.16f), 24.0f)};
+        Ogre::MaterialPtr const bambooAltMat{
+            makeLitMaterial("assoc/greenBamboo", Ogre::ColourValue(0.42f, 0.58f, 0.24f), Ogre::ColourValue(0.26f, 0.36f, 0.18f), 18.0f)};
+        Ogre::MaterialPtr const jointMat{
+            makeLitMaterial("assoc/bambooJoints", Ogre::ColourValue(0.98f, 0.82f, 0.22f), Ogre::ColourValue(0.75f, 0.55f, 0.18f), 30.0f)};
+        mWallNode = mScene->getRootSceneNode()->createChildSceneNode("wallRoot");
+        addDiagonalBambooWall(mScene, mWallNode, *woodMat, *darkWoodMat, *bambooMat, *bambooAltMat, *jointMat);
 
         // --- 3D szöveg: `SdkTrays/Caption` + Essential. RTSS: `TVC_NONE`+diffúz gyakran fehér; helyette
         //     `TVC_DIFFUSE` + arany `colour` / csúcs. LINEAR min/mag → mosott: nearest + clamp.
@@ -257,17 +418,17 @@ public:
             }
 
             Ogre::uint32 id{0};
-            mLineAssoc = mScene->getRootSceneNode()->createChildSceneNode("3dline_assoc", Ogre::Vector3(0.0F, 34.0F, 0.0F));
-            add3DTextLine(mScene, mLineAssoc, "assoc3dL", *font, *m, "assoc", 16.0F, id);
+            mLineAssoc = mScene->getRootSceneNode()->createChildSceneNode("3dline_assoc", Ogre::Vector3(0.0F, 88.0F, 10.0F));
+            add3DTextLine(mScene, mLineAssoc, "assoc3dL", *font, *m, "bambusz", 8.4F, id);
             mLineAssoc->setAutoTracking(true, mCamNode, Ogre::Vector3::UNIT_Z, Ogre::Vector3::ZERO);
 
-            mLineTop = mScene->getRootSceneNode()->createChildSceneNode("3dline_top", Ogre::Vector3(0.0F, 56.0F, 12.0F));
-            add3DTextLine(mScene, mLineTop, "top3dL", *font, *m, "ASSOC  |  Ogre3D  |  3D", 4.2F, id);
+            mLineTop = mScene->getRootSceneNode()->createChildSceneNode("3dline_top", Ogre::Vector3(0.0F, 76.0F, 14.0F));
+            add3DTextLine(mScene, mLineTop, "top3dL", *font, *m, "ATLOS  |  OGRE3D  |  VALASZTOFAL", 3.8F, id);
             mLineTop->setAutoTracking(true, mCamNode, Ogre::Vector3::UNIT_Z, Ogre::Vector3::ZERO);
 
-            mLineBottom = mScene->getRootSceneNode()->createChildSceneNode("3dline_bot", Ogre::Vector3(0.0F, 6.0F, 18.0F));
+            mLineBottom = mScene->getRootSceneNode()->createChildSceneNode("3dline_bot", Ogre::Vector3(0.0F, -20.0F, 18.0F));
             add3DTextLine(
-                mScene, mLineBottom, "bot3dL", *font, *m, "a s s o c  (nem csak 2D, 3D jelenet)", 3.2F, id);
+                mScene, mLineBottom, "bot3dL", *font, *m, "felhengerek ket tavoli fa oszlop kozott", 3.1F, id);
             mLineBottom->setAutoTracking(true, mCamNode, Ogre::Vector3::UNIT_Z, Ogre::Vector3::ZERO);
         }
     }
@@ -311,11 +472,17 @@ public:
         {
             mHeadNode2->yaw(Ogre::Radian(evt.timeSinceLastFrame * 0.2f));
         }
+        if (mWallNode)
+        {
+            mWallNode->setPosition(0.0f, 0.0f, 2.0f * Ogre::Math::Sin(mT * 0.55f));
+            mWallNode->setOrientation(
+                Ogre::Quaternion(Ogre::Degree(1.6f * Ogre::Math::Sin(mT * 0.32f)), Ogre::Vector3::UNIT_Y));
+        }
         if (mCamNode)
         {
-            const float c = 8.0f * Ogre::Math::Cos(mT * 0.15f);
+            const float c = 10.0f * Ogre::Math::Cos(mT * 0.15f);
             const float s = 6.0f * Ogre::Math::Sin(mT * 0.12f);
-            mCamNode->setPosition(c, 48.0f + s * 0.3f, 195.0f);
+            mCamNode->setPosition(c, 48.0f + s * 0.3f, 270.0f);
             mCamNode->lookAt(Ogre::Vector3(0.0f, 24.0f, 0.0f), Ogre::Node::TS_WORLD, Ogre::Vector3::NEGATIVE_UNIT_Z);
         }
         return OgreBites::ApplicationContext::frameRenderingQueued(evt);
@@ -342,6 +509,8 @@ private:
     Ogre::Entity* mHead{nullptr};
     Ogre::SceneNode* mHeadNode2{nullptr};
     Ogre::Entity* mHead2{nullptr};
+
+    Ogre::SceneNode* mWallNode{nullptr};
 
     Ogre::SceneNode* mLineAssoc{nullptr};
     Ogre::SceneNode* mLineTop{nullptr};
