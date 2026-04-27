@@ -7,6 +7,7 @@ src_dir="${deps_dir}/ogre-src"
 build_dir="${deps_dir}/ogre-build"
 prefix="${OGRE_SDK:-${deps_dir}/ogre-14}"
 version="${OGRE_VERSION:-v14.3.4}"
+ogre_use_wayland="${OGRE_USE_WAYLAND:-OFF}"
 
 mkdir -p "${deps_dir}"
 
@@ -42,11 +43,13 @@ cmake -S "${src_dir}" -B "${build_dir}" -G "${CMAKE_GENERATOR:-Ninja}" \
   -DOGRE_BUILD_PLUGIN_DOT_SCENE=OFF \
   -DOGRE_BUILD_PLUGIN_OCTREE=ON \
   -DOGRE_BUILD_CODEC_STBI=ON \
-  -DOGRE_CONFIG_ENABLE_ZIP=ON
+  -DOGRE_CONFIG_ENABLE_ZIP=ON \
+  -DOGRE_USE_WAYLAND="${ogre_use_wayland}"
 
 cmake --build "${build_dir}" --target install --parallel "${JOBS:-2}"
 
 echo
 echo "Ogre kesz: ${prefix}"
+echo "OGRE_USE_WAYLAND=${ogre_use_wayland}"
 echo "Build:"
 echo "  OGRE_PLUGIN_DIR=\"${prefix}/lib/OGRE\" ./scripts/build-arch.sh \"${prefix}\""

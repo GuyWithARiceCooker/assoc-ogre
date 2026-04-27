@@ -27,6 +27,17 @@ namespace
 {
     constexpr Ogre::Real kWaterY = 0.0f;
 
+    void preferX11WhenWaylandOgreIsUnavailable()
+    {
+        // Ogre built without OGRE_USE_WAYLAND cannot accept SDL-created Wayland
+        // native windows. Prefer XWayland when GNOME exposes both displays.
+        if (!std::getenv("SDL_VIDEODRIVER") && !std::getenv("ASSOC_ALLOW_WAYLAND") &&
+            std::getenv("WAYLAND_DISPLAY") && std::getenv("DISPLAY"))
+        {
+            setenv("SDL_VIDEODRIVER", "x11", 0);
+        }
+    }
+
     Ogre::MaterialPtr makeMaterial(const Ogre::String& name, const Ogre::ColourValue& diffuse,
         const Ogre::ColourValue& selfIllumination = Ogre::ColourValue::Black, const bool transparent = false)
     {
@@ -424,6 +435,7 @@ int main(int /*argc*/, char* /*argv*/[])
 {
     try
     {
+        preferX11WhenWaylandOgreIsUnavailable();
         AssocApp app;
         app.initApp();
         Ogre::Root* const root = app.getRoot();
