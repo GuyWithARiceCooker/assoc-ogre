@@ -219,27 +219,73 @@ function drawSmokeMachine() {
   const nozzle = project({ x: -28, y: 5.5, z: 24 });
   if (base.z <= 1 || nozzle.z <= 1) return;
   ctx.save();
-  ctx.fillStyle = 'rgba(20,26,34,0.92)';
+  ctx.fillStyle = 'rgba(22,28,38,0.96)';
   ctx.strokeStyle = 'rgba(120,150,180,0.25)';
   ctx.lineWidth = 1;
-  const w = Math.max(22, 1800 / base.z);
-  const h = Math.max(10, 700 / base.z);
+  const w = Math.max(34, 2600 / base.z);
+  const h = Math.max(16, 1100 / base.z);
   ctx.beginPath();
   ctx.roundRect(base.x - w * 0.5, base.y - h * 0.5, w, h, 4);
   ctx.fill(); ctx.stroke();
-  ctx.strokeStyle = 'rgba(160,190,210,0.55)';
+  ctx.strokeStyle = 'rgba(180,210,230,0.78)';
   ctx.lineWidth = Math.max(2, 160 / base.z);
   ctx.beginPath(); ctx.moveTo(base.x + w * 0.25, base.y - h * 0.25); ctx.lineTo(nozzle.x, nozzle.y); ctx.stroke();
   ctx.restore();
 }
 
-function drawProjectorIcons() {
-  for (const proj of projectorFrames) {
-    const pp = project(proj.pos);
-    if (pp.z <= 1) continue;
-    const r = 5 * Math.min(innerWidth, innerHeight) / pp.z;
-    ctx.fillStyle = rgba(proj.color, 0.85);
-    ctx.beginPath(); ctx.arc(pp.x, pp.y, Math.max(3, r * 2.3), 0, Math.PI * 2); ctx.fill();
+function drawProjectorHardware() {
+  const c = project(smokeCenter);
+  const screenW = Math.min(390, canvas.clientWidth || innerWidth, document.documentElement.clientWidth || innerWidth);
+  const screenH = canvas.clientHeight || document.documentElement.clientHeight || innerHeight;
+  const anchors = [
+    { x: 45, y: 145 },
+    { x: screenW - 45, y: 145 },
+    { x: 45, y: Math.max(275, screenH * 0.43) },
+    { x: screenW - 45, y: Math.max(275, screenH * 0.43) },
+  ];
+
+  for (let i = 0; i < projectorFrames.length; i++) {
+    const proj = projectorFrames[i];
+    const a = anchors[i];
+    const angle = Math.atan2(c.y - a.y, c.x - a.x);
+    const scale = Math.max(0.9, Math.min(1.18, innerWidth / 390));
+    const bodyW = 38 * scale;
+    const bodyH = 22 * scale;
+
+    ctx.save();
+    ctx.translate(a.x, a.y);
+    ctx.rotate(angle);
+    ctx.fillStyle = 'rgba(24,32,44,0.98)';
+    ctx.strokeStyle = 'rgba(185,210,240,0.62)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(-bodyW * 0.55, -bodyH * 0.5, bodyW, bodyH, 3);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = rgba(proj.color, 0.96);
+    ctx.beginPath();
+    ctx.arc(bodyW * 0.50, 0, Math.max(4.4, 6.2 * scale), 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(220,235,255,0.24)';
+    ctx.beginPath();
+    ctx.moveTo(-bodyW * 0.25, -bodyH * 0.5);
+    ctx.lineTo(-bodyW * 0.42, -bodyH * 1.02);
+    ctx.lineTo(bodyW * 0.05, -bodyH * 0.5);
+    ctx.stroke();
+    ctx.restore();
+
+    // Always-visible label/lens marker for mobile readability.
+    ctx.save();
+    ctx.fillStyle = rgba(proj.color, 1.0);
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, 5.5 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(230,240,255,0.86)';
+    ctx.font = `${Math.round(10 * scale)}px system-ui, sans-serif`;
+    ctx.fillText(`P${i + 1}`, a.x - 9 * scale, a.y - 11 * scale);
+    ctx.restore();
   }
 }
 
@@ -249,8 +295,10 @@ function render() {
   const bg = ctx.createLinearGradient(0, 0, 0, h);
   bg.addColorStop(0, '#0b1020'); bg.addColorStop(0.55, '#050912'); bg.addColorStop(1, '#02040a');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+  drawSmokeMachine();
   const sorted = smoke.slice().sort((a, b) => project(b.p).z - project(a.p).z);
   for (const s of sorted) drawParticle(s);
+  drawProjectorHardware();
   ctx.fillStyle = 'rgba(235,245,255,0.82)';
   ctx.font = '12px system-ui, sans-serif';
   ctx.fillText(mode === 1 ? 'tobbszorosen megvilagitott fustreszecskek' : mode === 2 ? 'a vetitett kep csak a fustben jelenik meg' : 'fustgepbol aramlo, megvilagitott fust', 14, h - 70);
