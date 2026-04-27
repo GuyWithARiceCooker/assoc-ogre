@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdlib>
 #include <vector>
 
 namespace
@@ -166,7 +167,8 @@ public:
         root->setRenderSystem(rs);
 
         setRenderOption(rs, "Full Screen", "No");
-        setRenderOption(rs, "Video Mode", "1024 x 640");
+        const char* const videoMode = std::getenv("ASSOC_VIDEO_MODE");
+        setRenderOption(rs, "Video Mode", videoMode ? videoMode : "1024 x 640");
         setRenderOption(rs, "FSAA", "0");
         setRenderOption(rs, "VSync", "Yes");
         setRenderOption(rs, "sRGB Gamma Conversion", "No");

@@ -55,6 +55,21 @@ Ha helyi `.deps/ogre-14` SDK-val forditottad, hasznald inkabb:
 ./scripts/run-linux.sh .deps/ogre-14
 ```
 
+A futtato script Wayland/GNOME alatt alapbol XWayland/X11 SDL backenddel probal
+indulni (`SDL_VIDEODRIVER=x11`), mert regi Intel/NVIDIA/Apple GPU-kon a Wayland
+GL context neha fekete ablakot vagy azonnali kilepest ad. Ha direkt Waylandet
+akarsz tesztelni:
+
+```bash
+ASSOC_FORCE_X11=0 SDL_VIDEODRIVER=wayland ./scripts/run-linux.sh .deps/ogre-14
+```
+
+Gyenge GPU-n kisebb ablak:
+
+```bash
+ASSOC_VIDEO_MODE="800 x 600" ./scripts/run-linux.sh .deps/ogre-14
+```
+
 Billentyuk:
 
 - `Space`: a harom hajotest szet-/osszedokkolasa
@@ -88,6 +103,25 @@ Kimeletes beallitasok a regi, 4 GB RAM-os gephez:
 
 Ha gyenge az iGPU, inditas utan az `build/ogre.cfg` fajlban meg lejjebb veheted
 a `Video Mode` sort peldaul `800 x 600`-ra.
+
+### Wayland/GNOME fekete ablak vagy kilepes
+
+Régi MacBookon Arch + GNOME/Wayland alatt elso korben ezt probald:
+
+```bash
+sudo pacman -S --needed mesa libglvnd xorg-xwayland mesa-utils
+glxinfo -B
+ASSOC_VIDEO_MODE="800 x 600" ./scripts/run-linux.sh .deps/ogre-14
+```
+
+Ha meg mindig fekete:
+
+```bash
+LIBGL_ALWAYS_SOFTWARE=1 ASSOC_VIDEO_MODE="800 x 600" ./scripts/run-linux.sh .deps/ogre-14
+```
+
+Ha igy elindul, akkor a hardveres Mesa/driver vagy Wayland GL utvonal a hibas,
+nem maga a jelenet.
 
 ## GitHub (uj repo + push)
 
