@@ -7,10 +7,28 @@ Kis Ogre3D 14 (Bites) + RTShader demó: 3D jelenet, szöveg a jelenetben betűnk
 - Ogre3D 14.x telepítve (CMake `find_package(OGRE)` megtalálja a rendszeren vagy egy saját prefixben)
 - SDL2 (Arch: `sudo pacman -S ogre sdl2 cmake ninja gcc`)
 
-**Linux / Arch** — egy lépésben (pacman + cmake + build):
+**Linux / Arch** — egy lépésben (pacman + cmake + build), **és ha akarod ugyanazon a gépen Tailscale-t is** (`tailscaled`):
+
+```bash
+./scripts/arch-setup-build.sh --tailscale
+```
+
+Csak fordítás (Tailscale nélkül):
 
 ```bash
 ./scripts/arch-setup-build.sh
+```
+
+Régi csak-Tailscale szkript: `./scripts/tailscale-arch-setup.sh`
+
+**Megjegyzés:** Cursor/felhős VM-ekben gyakran **nincs TUN** (`/dev/net/tun`) — ott a Tailscale daemon **nem indul**. Valódi Arch laptopon / fizikai gépen általában oké minden.
+
+**Ubuntu / Debian** (Tailscale csomag):
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sudo sh
+sudo systemctl enable --now tailscaled
+sudo tailscale up
 ```
 
 Vagy kézzel (ha az `ogre` csomagban megvan a mintamédia az OGRE `Media` könyvtárában — gyakran így van):
