@@ -21,6 +21,16 @@ curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/curso
 
 Ha CMake hiányolja a mintamédiát: előtte `export OGRE_SAMPLES_MEDIA=/útvonal/ogre/Samples/Media`.
 
+### Wayland + Arch `ogre` csomag
+
+Ha ezt látod: `externalWlDisplay` / `OgreX11EGLWindow.cpp` — a disztribúciós Ogre gyakran **nem** Waylanddel van fordítva. **Megoldás:** futtatás előtt (vagy a szkript ezt automatikusan beállítja Wayland alatt):
+
+```bash
+export SDL_VIDEODRIVER=x11
+```
+
+Így SDL **XWayland**-et használ. Valódi Wayland ablakhoz az Ogre-t **`OGRE_USE_WAYLAND=ON`-nal** kell újrafordítani (saját build / más csomag).
+
 ---
 
 ## Részletes (kézi lépések)

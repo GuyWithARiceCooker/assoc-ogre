@@ -75,6 +75,15 @@ cmake -S . -B build "${CMAKE_EXTRA[@]}"
 echo ">>> cmake build (meadow)"
 cmake --build build --target meadow
 
+# Arch `ogre` package is often built without OGRE_USE_WAYLAND; SDL+Wayland then hits
+# RuntimeAssertionException externalWlDisplay in OgreX11EGLWindow. Force X11 (XWayland).
+if [[ -z "${SDL_VIDEODRIVER:-}" ]]; then
+  if [[ "${XDG_SESSION_TYPE:-}" == wayland ]] || [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+    export SDL_VIDEODRIVER=x11
+    echo ">>> Wayland session: SDL_VIDEODRIVER=x11 (XWayland; avoids OGRE externalWlDisplay assert with distro ogre)"
+  fi
+fi
+
 echo ">>> ./meadow (working dir: build/)"
 cd "$ROOT/build"
 exec ./meadow
