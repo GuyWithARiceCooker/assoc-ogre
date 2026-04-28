@@ -4,20 +4,25 @@ Kis Ogre3D 14 (Bites) + RTShader demó: 3D jelenet, szöveg a jelenetben betűnk
 
 ## Függőségek
 
-- Ogre3D 14.x telepítve (CMake `OGREConfig.cmake` elérhető)
-- SDL2
-- A minta módokhoz/anyagokhoz: OGRE forráskönyvtár `Samples/Media` (hálók, `Examples/*` anyagok)
+- Ogre3D 14.x telepítve (CMake `find_package(OGRE)` megtalálja a rendszeren vagy egy saját prefixben)
+- SDL2 (Arch: `sudo pacman -S ogre sdl2 cmake ninja gcc`)
 
-A `CMakeLists.txt` alapértelmezett elérési utakat használ (`OGRE_SDK`, `OGRE_SAMPLES_MEDIA`); módosítsd, ha nálad máshol vannak:
+**Linux / Arch** (ha az `ogre` csomagban megvan a mintamédia az OGRE `Media` könyvtárában — gyakran így van):
 
 ```bash
-cmake -S . -B build \
-  -DOGRE_SDK=/path/to/ogre-sdk \
-  -DOGRE_SAMPLES_MEDIA=/path/to/ogre/Samples/Media
+cmake -S . -B build
 cmake --build build
 ```
 
-A futtatáshoz a generált `build/plugins.cfg` és `build/resources.cfg` kell; indítás: `build/assoc` a build könyvtárból, vagy a projekt `run-mac.sh` (ha a gépen passzol az út).
+Ha CMake nem találja automatikusan a `Samples/Media`-t az `assoc` demóhoz (`models/ogrehead.mesh`), add meg kézzel vagy töltsd le az Ogre forrást:
+
+```bash
+cmake -S . -B build -DOGRE_SAMPLES_MEDIA=/path/to/ogre/Samples/Media
+```
+
+**Saját SDK-prefix** (opcionális): `-DOGRE_SDK=/path/to/prefix` (ahol van `CMake/OGREConfig.cmake` vagy `lib/cmake/OGRE/`).
+
+A futtatáshoz a generált `build/plugins.cfg` és `build/resources.cfg` kell; indítás a `build/` könyvtárból: `./assoc` vagy `./meadow`. macOS-en továbbra is használható a `run-mac.sh`, ha az útvonalak passzolnak.
 
 ## GitHub (új repó + push)
 

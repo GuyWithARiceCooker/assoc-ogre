@@ -9,5 +9,5 @@ FileSystem=@OGRE_SAMPLES_MEDIA@/materials/textures
 
 # OgreBites::TrayManager / sdk_* textúrák, profiler
 [Essential]
-Zip=@OGRE_SDK@/Media/packs/SdkTrays.zip
-Zip=@OGRE_SDK@/Media/packs/profiler.zip
+Zip=@OGRE_MEDIA_DIR@/packs/SdkTrays.zip
+Zip=@OGRE_MEDIA_DIR@/packs/profiler.zip
