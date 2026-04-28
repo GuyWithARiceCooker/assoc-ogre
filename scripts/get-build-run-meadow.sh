@@ -11,9 +11,8 @@
 #   ./scripts/get-build-run-meadow.sh https://github.com/GuyWithARiceCooker/assoc-ogre.git
 #   ./scripts/get-build-run-meadow.sh https://github.com/GuyWithARiceCooker/assoc-ogre.git ../assoc-ogre
 #
-# Ha az OGRE nem standard helyen van (opcionális):
-#   export CMAKE_PREFIX_PATH=/usr
-#   export OGRE_SAMPLES_MEDIA=/path/to/ogre/Samples/Media
+# Ha Wayland + saját OGRE OGRE_USE_WAYLAND=ON:
+#   export ASSOC_OGRE_WAYLAND_NATIVE=1
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -77,10 +76,12 @@ cmake --build build --target meadow
 
 # Arch `ogre` package is often built without OGRE_USE_WAYLAND; SDL+Wayland then hits
 # RuntimeAssertionException externalWlDisplay in OgreX11EGLWindow. Force X11 (XWayland).
-if [[ -z "${SDL_VIDEODRIVER:-}" ]]; then
+# Skip if you installed OGRE built with OGRE_USE_WAYLAND=ON:
+#   export ASSOC_OGRE_WAYLAND_NATIVE=1
+if [[ -z "${SDL_VIDEODRIVER:-}" ]] && [[ "${ASSOC_OGRE_WAYLAND_NATIVE:-}" != "1" ]]; then
   if [[ "${XDG_SESSION_TYPE:-}" == wayland ]] || [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
     export SDL_VIDEODRIVER=x11
-    echo ">>> Wayland session: SDL_VIDEODRIVER=x11 (XWayland; avoids OGRE externalWlDisplay assert with distro ogre)"
+    echo ">>> Wayland session: SDL_VIDEODRIVER=x11 (XWayland; patch distro ogre). Native Wayland: build OGRE with OGRE_USE_WAYLAND=ON then ASSOC_OGRE_WAYLAND_NATIVE=1"
   fi
 fi
 

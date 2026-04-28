@@ -21,15 +21,32 @@ curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/curso
 
 Ha CMake hiányolja a mintamédiát: előtte `export OGRE_SAMPLES_MEDIA=/útvonal/ogre/Samples/Media`.
 
-### Wayland + Arch `ogre` csomag
+### Wayland
 
-Ha ezt látod: `externalWlDisplay` / `OgreX11EGLWindow.cpp` — a disztribúciós Ogre gyakran **nem** Waylanddel van fordítva. **Megoldás:** futtatás előtt (vagy a szkript ezt automatikusan beállítja Wayland alatt):
+**A)** **Gyors (Arch `ogre` csomag):** a rendszer-Ogre gyakran **nem** Waylandes; a repo szkript Wayland alatt **`SDL_VIDEODRIVER=x11`** (XWayland), hogy ne omoljon össze (`externalWlDisplay`).
+
+**B)** **Natív Wayland:** fordíts **saját Ogre-t** `OGRE_USE_WAYLAND=ON`-nal (lásd lent), telepíts egy prefixbe, majd:
 
 ```bash
-export SDL_VIDEODRIVER=x11
+export CMAKE_PREFIX_PATH="$HOME/ogre-wayland"
+export ASSOC_OGRE_WAYLAND_NATIVE=1
+cmake -S . -B build && cmake --build build --target meadow
+cd build && ./meadow
 ```
 
-Így SDL **XWayland**-et használ. Valódi Wayland ablakhoz az Ogre-t **`OGRE_USE_WAYLAND=ON`-nal** kell újrafordítani (saját build / más csomag).
+(`ASSOC_OGRE_WAYLAND_NATIVE=1` → a szkript **nem** erőlteti az X11 fallbacket.)
+
+**Ogre forrásból Waylanddel** (vázlat, függőségek Archon pl. `wayland`, `wayland-protocols`, `libxkbcommon`, `mesa`; pontos lista: OGRE BUILD dokumentáció):
+
+```bash
+git clone --depth 1 https://github.com/OGRECave/ogre.git
+cmake -S ogre -B ogre/build -DCMAKE_INSTALL_PREFIX="$HOME/ogre-wayland" \
+  -DCMAKE_BUILD_TYPE=Release -DOGRE_USE_WAYLAND=ON
+cmake --build ogre/build -j"$(nproc)"
+cmake --install ogre/build
+```
+
+Ezután a projekt `CMAKE_PREFIX_PATH="$HOME/ogre-wayland"` + `ASSOC_OGRE_WAYLAND_NATIVE=1` + `OGRE_SAMPLES_MEDIA` ha kell.
 
 ---
 
