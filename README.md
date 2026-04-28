@@ -8,8 +8,10 @@ Procedurális **félhengerek**, több **elrendezési minta** (lamella, dupla sor
 
 ```bash
 cmake --build build --target bamboo_gap
-cd build && ./bamboo_gap
+./scripts/run-bamboo_gap-x11.sh
 ```
+
+*(Vagy: `./scripts/run-demo-x11.sh bamboo_gap` — ugyanaz az **env -u WAYLAND_*** + **SDL x11** mint a meadow-nál.)*
 
 ## Arch — **egy parancs**: rendszer **OGRE** + projekt **fordítás** + **meadow jelenet** futtatás
 
@@ -61,10 +63,9 @@ Vagy a repóban: `./scripts/where-ogre-samples.sh`
 
 ```bash
 ./scripts/run-meadow-x11.sh
+./scripts/run-bamboo_gap-x11.sh
+# vagy: ./scripts/run-demo-x11.sh meadow   # / bamboo_gap / assoc
 ```
-
-vagy egy sorban:  
-`env -u WAYLAND_DISPLAY -u WAYLAND_SOCKET SDL_VIDEODRIVER=x11 ./build/meadow`
 
 Ha stderr szerint nem **x11** a driver: **`sudo pacman -S sdl2`** és ha mehet, **`sdl2-compat`** eltávolítása — az compat réteg gyakran ragad Waylandre.
 
