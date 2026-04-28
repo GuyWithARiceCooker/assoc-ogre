@@ -1,5 +1,7 @@
 # assoc-ogre
 
+**Gyors „csak menjen”** (repo gyökér): **`bash scripts/just-work.sh`** — tun próba, cmake **`meadow`**, indulás **X11-gel**.
+
 Kis Ogre3D 14 (Bites) + RTShader demó: 3D jelenet, szöveg a jelenetben betűnként `ManualObject` + `SdkTrays/Caption` font, nem overlay.
 
 ## bamboo_gap — bambusz félhengerek (~90 egység nyílás)
