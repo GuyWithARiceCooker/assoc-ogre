@@ -81,6 +81,19 @@ Vagy a repóban: `./scripts/where-ogre-samples.sh`
 
 ## Részletes (kézi lépések)
 
+### CMake — **mindig a repó gyökeréből**
+
+Ahol a **`CMakeLists.txt`** van (pl. `~/assoc-ogre`), **ne** a `build/` mappából futtasd a `cmake -S . -B build`-et — különben „does not contain CMakeLists.txt”.
+
+```bash
+cd ~/assoc-ogre
+cmake -S . -B build
+cmake --build build --target meadow
+cd build && ./meadow
+```
+
+Ha véletlenül **`build/`** belül vagy: `cd ..` (egy szint fel).
+
 ### Függőségek
 
 - Ogre3D 14.x telepítve (CMake `find_package(OGRE)` megtalálja a rendszeren vagy egy saját prefixben)
