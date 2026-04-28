@@ -4,7 +4,7 @@ Kis Ogre3D 14 (Bites) + RTShader demó: 3D jelenet, szöveg a jelenetben betűnk
 
 ## Arch — **egy parancs**: rendszer **OGRE** + projekt **fordítás** + **meadow jelenet** futtatás
 
-*(Telepíti az `ogre` és `sdl2` csomagokat, klónozza/pullolja a repót `~/assoc-ogre`-ba, `cmake` build `meadow`, majd elindítja a scene-t. Wayland alatt a script **XWayland**-et használ a distro Ogre-val.)*
+*(Telepíti az `ogre` és `sdl2` csomagokat, klónozza/pullolja a repót `~/assoc-ogre`-ba, `cmake` build `meadow`, majd elindítja a scene-t. **Natív Wayland:** állíts `CMAKE_PREFIX_PATH`-ot saját Ogre Wayland prefixre — lásd „Wayland”.)*
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/cursor/meadow-scene-4764/scripts/paste-run-arch.sh | bash
@@ -37,30 +37,32 @@ Vagy a repóban: `./scripts/where-ogre-samples.sh`
 
 ### Wayland
 
-**A)** **Gyors (Arch `ogre` csomag):** a rendszer-Ogre gyakran **nem** Waylandes. A demó bináris Linuxon **indulás előtt** beállítja `SDL_VIDEODRIVER=x11` Wayland sessionben (XWayland), kivéve ha már `SDL_VIDEODRIVER` vagy `ASSOC_OGRE_WAYLAND_NATIVE=1` van beállítva. A shell szkriptek ugyanezt erősítik meg.
+**Érdemes:** natív Wayland ablak — ehhez az **Ogre-t `OGRE_USE_WAYLAND=ON`-nal** kell fordítani (Arch **`pacman -S ogre`** gyakran **nem** így készül).
 
-**B)** **Natív Wayland:** fordíts **saját Ogre-t** `OGRE_USE_WAYLAND=ON`-nal (lásd lent), telepíts egy prefixbe, majd:
+1. **Saját Ogre Wayland prefix** (Arch; egyszer):
 
-```bash
-export CMAKE_PREFIX_PATH="$HOME/ogre-wayland"
-export ASSOC_OGRE_WAYLAND_NATIVE=1
-cmake -S . -B build && cmake --build build --target meadow
-cd build && ./meadow
-```
+   ```bash
+   PREFIX=$HOME/ogre-wayland bash scripts/build-ogre-wayland-prefix.sh
+   ```
 
-(`ASSOC_OGRE_WAYLAND_NATIVE=1` → a szkript **nem** erőlteti az X11 fallbacket.)
+2. **Ez a projekt** abba a prefixbe kötve:
 
-**Ogre forrásból Waylanddel** (vázlat, függőségek Archon pl. `wayland`, `wayland-protocols`, `libxkbcommon`, `mesa`; pontos lista: OGRE BUILD dokumentáció):
+   ```bash
+   export CMAKE_PREFIX_PATH=$HOME/ogre-wayland
+   cmake -S . -B build && cmake --build build --target meadow
+   cd build && ./meadow
+   ```
 
-```bash
-git clone --depth 1 https://github.com/OGRECave/ogre.git
-cmake -S ogre -B ogre/build -DCMAKE_INSTALL_PREFIX="$HOME/ogre-wayland" \
-  -DCMAKE_BUILD_TYPE=Release -DOGRE_USE_WAYLAND=ON
-cmake --build ogre/build -j"$(nproc)"
-cmake --install ogre/build
-```
+   A demó **alapból nem** állít `SDL_VIDEODRIVER=x11`-et — SDL Waylandet használ, ha az Ogre Waylandes.
 
-Ezután a projekt `CMAKE_PREFIX_PATH="$HOME/ogre-wayland"` + `ASSOC_OGRE_WAYLAND_NATIVE=1` + `OGRE_SAMPLES_MEDIA` ha kell.
+3. **Ha csak a distro `ogre` csomagod van** és `externalWlDisplay` assert: az **nem** Waylandes Ogre — ideiglenesen **XWayland**:
+
+   ```bash
+   export ASSOC_OGRE_USE_XWAYLAND=1
+   cd build && ./meadow
+   ```
+
+   Vagy: `SDL_VIDEODRIVER=x11 ./meadow`
 
 ---
 

@@ -26,6 +26,6 @@ else
 fi
 
 cd "$REPO"
-echo ">>> 3/4 projekt: cmake + fordítás (meadow), Wayland: X11 fallback a get-build-run-meadow.sh-ben"
+echo ">>> 3/4 projekt: cmake + fordítás (meadow); alapból Wayland SDL — distro ogre nélküle: ASSOC_OGRE_USE_XWAYLAND=1"
 echo ">>> 4/4 Meadow scene: ./meadow (Esc kilépés)"
 exec bash "$REPO/scripts/get-build-run-meadow.sh" --no-pull

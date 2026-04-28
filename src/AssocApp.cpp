@@ -353,7 +353,7 @@ private:
 
 int main(int /*argc*/, char* /*argv*/[])
 {
-    AssocLinuxEnv::preferX11ForDistroOgreOnWayland();
+    AssocLinuxEnv::applyLinuxDisplayEnvForOgre();
     try
     {
         AssocApp app;
