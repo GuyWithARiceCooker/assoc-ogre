@@ -30,6 +30,26 @@ cmake -S . -B build -DOGRE_SAMPLES_MEDIA=/path/to/ogre/Samples/Media
 
 A futtatáshoz a generált `build/plugins.cfg` és `build/resources.cfg` kell; indítás a `build/` könyvtárból: `./assoc` vagy `./meadow`. macOS-en továbbra is használható a `run-mac.sh`, ha az útvonalak passzolnak.
 
+## Tailscale-kapcsolat (távoli gép ↔ laptop)
+
+Ha a **laptopodon** fordítasz és futtatsz, de máshonnan (másik gépről) akarsz **SSH-t vagy fájlmásolást** ugyanazon a magánhálón:
+
+1. **Arch laptop:** telepítés és felkapcsolás (egyszer):
+   ```bash
+   sudo pacman -S tailscale
+   sudo systemctl enable --now tailscaled
+   sudo tailscale up
+   ```
+   A `tailscale status` kiírja a laptop **Tailscale IP**-jét (pl. `100.x.y.z`).
+
+2. **Másik gépről SSH** a projekthez / terminálhoz (ha az SSH szerver fut a laptopon):
+   ```bash
+   ssh felhasználó@100.x.y.z
+   ```
+   Innen ugyanúgy `git pull`, `./scripts/arch-setup-build.sh`, majd `cd build && ./meadow` — de az **ablak a laptop kijelzőjén** nyílik meg (helyi X/Wayland), hacsak nem állítasz be **X11 továbbítást** (`ssh -Y`) vagy más távoli megjelenítést.
+
+3. **Repó / kód szinkron** Tailscale-en keresztül nem kötelező: elég a **GitHub** (`git pull` / `git push`). A Tailscale inkább a **biztonságos elérést** adja (SSH, scp, rsync) a két gép között ugyanazon a TS-hálón.
+
 ## GitHub (új repó + push)
 
 1. Egy olyan terminálban, ahol tudod használni a `gh` böngészős bejelentkezését, egyszer: `gh auth login`  
