@@ -21,6 +21,19 @@ Csak fordítás (Tailscale nélkül):
 
 Régi csak-Tailscale szkript: `./scripts/tailscale-arch-setup.sh`
 
+**Egyben: pull → build → meadow jelenet** (nálad):
+
+```bash
+chmod +x scripts/get-build-run-meadow.sh   # egyszer
+./scripts/get-build-run-meadow.sh
+```
+
+Első alkalom (clone + build + futtatás egy könyvtárban):
+
+```bash
+./scripts/get-build-run-meadow.sh https://github.com/GuyWithARiceCooker/assoc-ogre.git
+```
+
 **Megjegyzés:** Cursor/felhős VM-ekben gyakran **nincs TUN** (`/dev/net/tun`) — ott a Tailscale daemon **nem indul**. Valódi Arch laptopon / fizikai gépen általában oké minden.
 
 **Ubuntu / Debian** (Tailscale csomag):
