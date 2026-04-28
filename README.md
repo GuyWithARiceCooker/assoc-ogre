@@ -7,7 +7,13 @@ Kis Ogre3D 14 (Bites) + RTShader demó: 3D jelenet, szöveg a jelenetben betűnk
 - Ogre3D 14.x telepítve (CMake `find_package(OGRE)` megtalálja a rendszeren vagy egy saját prefixben)
 - SDL2 (Arch: `sudo pacman -S ogre sdl2 cmake ninja gcc`)
 
-**Linux / Arch** (ha az `ogre` csomagban megvan a mintamédia az OGRE `Media` könyvtárában — gyakran így van):
+**Linux / Arch** — egy lépésben (pacman + cmake + build):
+
+```bash
+./scripts/arch-setup-build.sh
+```
+
+Vagy kézzel (ha az `ogre` csomagban megvan a mintamédia az OGRE `Media` könyvtárában — gyakran így van):
 
 ```bash
 cmake -S . -B build
