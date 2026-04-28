@@ -1,13 +1,10 @@
-# Minta módok: háló (`models/`), + SDK „Hiányos” Ogre-telepítésnél a teljes `Main` nincs — a
-# Examples/Rockwall és a knot „2 - Default” anyag a `Samples/Media/materials/` alatt van
-# A SDK Main/RTShaderLib/Terrain NE legyen a [General] alatt (Bites már OgreInternal-ra adja) →
-# nincs dupla .program parse (Ogre/ShadowBlendVP)
+# General: mintamodellek / anyagok (`assoc` demó). Ha nincs teljes Samples/Media, ez fallback az OGRE SDK Media-ra.
 [General]
-FileSystem=@OGRE_SAMPLES_MEDIA@/models
-FileSystem=@OGRE_SAMPLES_MEDIA@/materials/scripts
-FileSystem=@OGRE_SAMPLES_MEDIA@/materials/textures
+FileSystem=@OGRE_GENERAL_MEDIA@/models
+FileSystem=@OGRE_GENERAL_MEDIA@/materials/scripts
+FileSystem=@OGRE_GENERAL_MEDIA@/materials/textures
 
-# OgreBites::TrayManager / sdk_* textúrák, profiler
+# OgreBites::TrayManager / sdk_* textúrák, profiler (assoc font + meadow nem használja külön, de betöltődik)
 [Essential]
 Zip=@OGRE_MEDIA_DIR@/packs/SdkTrays.zip
 Zip=@OGRE_MEDIA_DIR@/packs/profiler.zip

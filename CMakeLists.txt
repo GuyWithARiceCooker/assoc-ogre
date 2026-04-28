@@ -60,18 +60,27 @@ if(NOT OGRE_SAMPLES_MEDIA)
   )
 endif()
 
-if(NOT OGRE_SAMPLES_MEDIA)
-  message(FATAL_ERROR
-    "OGRE_SAMPLES_MEDIA nincs megadva és nem találom az Ogre Samples/Media könyvtárat "
-    "(models/ogrehead.mesh). Az assoc demóhoz kell. Példa:\n"
-    "  cmake -S . -B build -DOGRE_SAMPLES_MEDIA=/path/to/ogre/Sources/Samples/Media\n"
-    "vagy: export OGRE_SAMPLES_MEDIA=... és újra cmake.\n"
-    "Letöltés: git clone --depth 1 https://github.com/OGRECave/ogre.git && \\ \n"
-    "  -DOGRE_SAMPLES_MEDIA=$PWD/ogre/Samples/Media")
+# find_path sikertelen
+if(OGRE_SAMPLES_MEDIA AND OGRE_SAMPLES_MEDIA MATCHES "NOTFOUND")
+  set(OGRE_SAMPLES_MEDIA "")
 endif()
 
-if(NOT EXISTS "${OGRE_SAMPLES_MEDIA}/models/ogrehead.mesh")
-  message(FATAL_ERROR "OGRE_SAMPLES_MEDIA érvénytelen (hiányzik: models/ogrehead.mesh): ${OGRE_SAMPLES_MEDIA}")
+# assoc demóhoz kell teljes Samples/Media (ogrehead.mesh). meadow / bamboo_gap csak Essential-ből él — cmake mindig lefut.
+set(OGRE_GENERAL_MEDIA "${OGRE_SAMPLES_MEDIA}")
+if(NOT OGRE_GENERAL_MEDIA)
+  set(OGRE_GENERAL_MEDIA "${OGRE_MEDIA_DIR}")
+endif()
+
+set(ASSOC_CAN_BUILD OFF)
+if(OGRE_SAMPLES_MEDIA AND EXISTS "${OGRE_SAMPLES_MEDIA}/models/ogrehead.mesh")
+  set(ASSOC_CAN_BUILD ON)
+elseif(NOT OGRE_SAMPLES_MEDIA AND EXISTS "${OGRE_MEDIA_DIR}/models/ogrehead.mesh")
+  set(ASSOC_CAN_BUILD ON)
+  set(OGRE_SAMPLES_MEDIA "${OGRE_MEDIA_DIR}")
+endif()
+
+if(NOT ASSOC_CAN_BUILD)
+  message(STATUS "assoc kihagyva: nincs models/ogrehead.mesh — állítsd -DOGRE_SAMPLES_MEDIA=... vagy telepítsd az Ogre Samples/Media-t.")
 endif()
 
 # configure_file számára (OGREConfig.cmake-ből)
@@ -90,26 +99,28 @@ configure_file(
 # Első indításhoz kell (ne a rendszer config dialógus blokkolja a fejlesztést)
 file(COPY "${CMAKE_SOURCE_DIR}/cfg/ogre.cfg" DESTINATION "${CMAKE_BINARY_DIR}")
 
-add_executable(assoc
-  src/AssocApp.cpp)
+set(_ogre_rpath "${OGRE_LIBRARY_DIRS}")
+if(OGRE_PLUGIN_DIR)
+  list(APPEND _ogre_rpath "${OGRE_PLUGIN_DIR}")
+endif()
 
-target_link_libraries(assoc PRIVATE OgreBites)
-target_include_directories(assoc PRIVATE ${OGRE_INCLUDE_DIRS})
+if(ASSOC_CAN_BUILD)
+  add_executable(assoc
+    src/AssocApp.cpp)
+
+  target_link_libraries(assoc PRIVATE OgreBites)
+  target_include_directories(assoc PRIVATE ${OGRE_INCLUDE_DIRS})
+
+  set_target_properties(assoc PROPERTIES
+    BUILD_RPATH "${_ogre_rpath}"
+    BUILD_WITH_INSTALL_RPATH FALSE)
+endif()
 
 add_executable(meadow
   src/MeadowApp.cpp)
 
 target_link_libraries(meadow PRIVATE OgreBites)
 target_include_directories(meadow PRIVATE ${OGRE_INCLUDE_DIRS})
-
-set(_ogre_rpath "${OGRE_LIBRARY_DIRS}")
-if(OGRE_PLUGIN_DIR)
-  list(APPEND _ogre_rpath "${OGRE_PLUGIN_DIR}")
-endif()
-
-set_target_properties(assoc PROPERTIES
-  BUILD_RPATH "${_ogre_rpath}"
-  BUILD_WITH_INSTALL_RPATH FALSE)
 
 set_target_properties(meadow PROPERTIES
   BUILD_RPATH "${_ogre_rpath}"

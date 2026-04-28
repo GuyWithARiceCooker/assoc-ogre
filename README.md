@@ -36,7 +36,11 @@ cd ~/assoc-ogre && bash scripts/paste-run-arch.sh
 
 Alias név: `scripts/run-scene-arch.sh` → ugyanaz.
 
-Ha CMake hiányolja a mintamédiát (`assoc` demóhoz): előtte egyszer `export OGRE_SAMPLES_MEDIA=/útvonal/ogre/Samples/Media`.
+Ha CMake hiányolja a mintamédiát (`assoc` demóhoz): **`assoc`** nélkül is lefordul **`meadow`** és **`bamboo_gap`**. Az **`assoc`**-hoz kell `models/ogrehead.mesh` — adj meg útvonalat:
+
+```bash
+cmake -S . -B build -DOGRE_SAMPLES_MEDIA=/útvonal/ogre/Samples/Media
+```
 
 **Más klónozási könyvtár:**
 
