@@ -4,11 +4,20 @@ Kis Ogre3D 14 (Bites) + RTShader demó: 3D jelenet, szöveg a jelenetben betűnk
 
 ## Arch — **egy parancs**: rendszer **OGRE** + projekt **fordítás** + **meadow jelenet** futtatás
 
-*(Telepíti az `ogre` és `sdl2` csomagokat, klónozza/pullolja a repót `~/assoc-ogre`-ba, `cmake` build `meadow`, majd elindítja a scene-t. **Natív Wayland:** állíts `CMAKE_PREFIX_PATH`-ot saját Ogre Wayland prefixre — lásd „Wayland”.)*
+*(Ha **`git pull` / clone nem megy**, ugyanez a szkript **automatikusan ZIP-et tölt** GitHub-ról. Kötelező kényszerítés ZIP-re: `ASSOC_OGRE_FROM_ZIP=1`.)*
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/cursor/meadow-scene-4764/scripts/paste-run-arch.sh | bash
 ```
+
+**Git nélkül / elölről (csak curl + bash):**
+
+```bash
+export ASSOC_OGRE_FROM_ZIP=1
+curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/cursor/meadow-scene-4764/scripts/paste-run-arch.sh | bash
+```
+
+Kézzel csak a forrás: `bash scripts/fetch-repo-zip.sh ~/assoc-ogre` (majd `cd ~/assoc-ogre && bash scripts/get-build-run-meadow.sh --no-pull` ha már fent van az OGRE).
 
 Ugyanez, ha már klónoztál:
 
