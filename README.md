@@ -11,6 +11,8 @@ cmake --build build --target bamboo_gap
 cd build && ./bamboo_gap
 ```
 
+## Arch — **egy parancs**: rendszer **OGRE** + projekt **fordítás** + **meadow jelenet** futtatás
+
 *(Ha **`git pull` / clone nem megy**, ugyanez a szkript **automatikusan ZIP-et tölt** GitHub-ról. Kötelező kényszerítés ZIP-re: `ASSOC_OGRE_FROM_ZIP=1`.)*
 
 ```bash
