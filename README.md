@@ -2,24 +2,30 @@
 
 Kis Ogre3D 14 (Bites) + RTShader demó: 3D jelenet, szöveg a jelenetben betűnként `ManualObject` + `SdkTrays/Caption` font, nem overlay.
 
-## Arch — egy copy-paste (függőség + repo + meadow futtatás)
+## Arch — **egy parancs**: rendszer **OGRE** + projekt **fordítás** + **meadow jelenet** futtatás
 
-**Gyorsút:** bash shellben másold be **egyetlen blokkban** (sudo kérhet jelszót):
+*(Telepíti az `ogre` és `sdl2` csomagokat, klónozza/pullolja a repót `~/assoc-ogre`-ba, `cmake` build `meadow`, majd elindítja a scene-t. Wayland alatt a script **XWayland**-et használ a distro Ogre-val.)*
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/cursor/meadow-scene-4764/scripts/paste-run-arch.sh | bash
 ```
 
-Ez telepíti (`git`, `ogre`, `sdl2`, `cmake`, `ninja`, `gcc`), klónozza a repót `~/assoc-ogre`-ba (ha még nincs), checkout `cursor/meadow-scene-4764`, majd build + `./meadow`.
+Ugyanez, ha már klónoztál:
 
-**Ha már klónoztál máshova:**
+```bash
+cd ~/assoc-ogre && bash scripts/paste-run-arch.sh
+```
+
+Alias név: `scripts/run-scene-arch.sh` → ugyanaz.
+
+Ha CMake hiányolja a mintamédiát (`assoc` demóhoz): előtte egyszer `export OGRE_SAMPLES_MEDIA=/útvonal/ogre/Samples/Media`.
+
+**Más klónozási könyvtár:**
 
 ```bash
 export ASSOC_OGRE_HOME=/útvonal/amire/tetted
 curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/cursor/meadow-scene-4764/scripts/paste-run-arch.sh | bash
 ```
-
-Ha CMake hiányolja a mintamédiát: előtte `export OGRE_SAMPLES_MEDIA=/útvonal/ogre/Samples/Media`.
 
 **OGRE minták hol (Arch / Linux) — egy parancs:**
 
