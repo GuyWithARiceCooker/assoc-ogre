@@ -149,7 +149,17 @@ cmake -S . -B build -DOGRE_SAMPLES_MEDIA=/path/to/ogre/Samples/Media
 
 A futtatáshoz a generált `build/plugins.cfg` és `build/resources.cfg` kell; indítás a `build/` könyvtárból: `./meadow`, `./bamboo_gap`, esetleg `./assoc`. macOS-en továbbra is használható a `run-mac.sh`, ha az útvonalak passzolnak.
 
-Opcionális (SSH másik gépről): lásd `scripts/tailscale-arch-setup.sh` — **nem kell** az OGRE-hez.
+Opcionális (SSH másik gépről): **`./scripts/tailscale-arch-setup.sh`** — Tailscale daemon + **`tailscale up`**. SSH szerverrel: **`./scripts/tailscale-arch-setup.sh --with-sshd`**. Nem kell az OGRE futtatásához.
+
+### Tailscale felállítás (Arch, csomag már telepítve)
+
+```bash
+./scripts/tailscale-arch-setup.sh
+```
+
+Ez: **`systemctl enable --now tailscaled`**, **`sudo tailscale up`** (belépés böngészőben / utasítás szerint), majd kiírja a **Tailscale IP**-t. Másik gépen ugyanígy, ugyanazzal a fiókkal — utána **`ssh user@100.x.x.x`**.
+
+Ha **nincs systemd** (ritka konténer): a szkript figyelmeztet; laptopon általában oké.
 
 ## GitHub (új repó + push)
 
