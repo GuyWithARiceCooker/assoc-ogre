@@ -21,6 +21,14 @@ curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/curso
 
 Ha CMake hiányolja a mintamédiát: előtte `export OGRE_SAMPLES_MEDIA=/útvonal/ogre/Samples/Media`.
 
+**OGRE minták hol (Arch / Linux) — egy parancs:**
+
+```bash
+ls -la /opt/ogre/samples 2>/dev/null; ls -d /usr/share/OGRE-* 2>/dev/null; for d in /usr/share/OGRE-*/Media; do [[ -d "$d" ]] && echo "== $d ==" && ls "$d" | head -30; done; [[ -x /opt/ogre/samples/SampleBrowser ]] && echo "Futtatás: /opt/ogre/samples/SampleBrowser"
+```
+
+Vagy a repóban: `./scripts/where-ogre-samples.sh`
+
 ### Wayland
 
 **A)** **Gyors (Arch `ogre` csomag):** a rendszer-Ogre gyakran **nem** Waylandes; a repo szkript Wayland alatt **`SDL_VIDEODRIVER=x11`** (XWayland), hogy ne omoljon össze (`externalWlDisplay`).
