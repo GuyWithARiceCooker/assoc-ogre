@@ -34,6 +34,11 @@ list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/sdl2")
 
 find_package(OGRE REQUIRED COMPONENTS Bites CONFIG)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(SDL2_PC REQUIRED IMPORTED_TARGET sdl2)
+endif()
+
 if(NOT OGRE_SAMPLES_MEDIA)
   if(DEFINED ENV{OGRE_SAMPLES_MEDIA} AND NOT "$ENV{OGRE_SAMPLES_MEDIA}" STREQUAL "")
     set(OGRE_SAMPLES_MEDIA "$ENV{OGRE_SAMPLES_MEDIA}")
@@ -106,9 +111,13 @@ endif()
 
 if(ASSOC_CAN_BUILD)
   add_executable(assoc
-    src/AssocApp.cpp)
+    src/AssocApp.cpp
+    src/AssocLinuxWaylandEnv.cpp)
 
   target_link_libraries(assoc PRIVATE OgreBites)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(assoc PRIVATE PkgConfig::SDL2_PC)
+  endif()
   target_include_directories(assoc PRIVATE ${OGRE_INCLUDE_DIRS})
 
   set_target_properties(assoc PROPERTIES
@@ -117,9 +126,13 @@ if(ASSOC_CAN_BUILD)
 endif()
 
 add_executable(meadow
-  src/MeadowApp.cpp)
+  src/MeadowApp.cpp
+  src/AssocLinuxWaylandEnv.cpp)
 
 target_link_libraries(meadow PRIVATE OgreBites)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_link_libraries(meadow PRIVATE PkgConfig::SDL2_PC)
+endif()
 target_include_directories(meadow PRIVATE ${OGRE_INCLUDE_DIRS})
 
 set_target_properties(meadow PROPERTIES
@@ -127,9 +140,13 @@ set_target_properties(meadow PROPERTIES
   BUILD_WITH_INSTALL_RPATH FALSE)
 
 add_executable(bamboo_gap
-  src/BambooGapApp.cpp)
+  src/BambooGapApp.cpp
+  src/AssocLinuxWaylandEnv.cpp)
 
 target_link_libraries(bamboo_gap PRIVATE OgreBites)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_link_libraries(bamboo_gap PRIVATE PkgConfig::SDL2_PC)
+endif()
 target_include_directories(bamboo_gap PRIVATE ${OGRE_INCLUDE_DIRS})
 
 set_target_properties(bamboo_gap PROPERTIES

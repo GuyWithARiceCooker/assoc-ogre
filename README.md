@@ -57,9 +57,7 @@ ls -la /opt/ogre/samples 2>/dev/null; ls -d /usr/share/OGRE-* 2>/dev/null; for d
 
 Vagy a repóban: `./scripts/where-ogre-samples.sh`
 
-### Wayland
-
-**Érdemes:** natív Wayland ablak — ehhez az **Ogre-t `OGRE_USE_WAYLAND=ON`-nal** kell fordítani (Arch **`pacman -S ogre`** gyakran **nem** így készül).
+**Megjegyzés (Wayland + pacman Ogre):** a futtathatók **`SDL_HINT_VIDEODRIVER=x11`** erős prioritással állítják be az SDL-t az első init előtt (`AssocLinuxWaylandEnv.cpp`), nem csak env változó — így nem nyílik natív Wayland ablak a distro Ogre ellen.
 
 1. **Saját Ogre Wayland prefix** (Arch; egyszer):
 
@@ -86,7 +84,7 @@ Vagy a repóban: `./scripts/where-ogre-samples.sh`
 ### Függőségek
 
 - Ogre3D 14.x telepítve (CMake `find_package(OGRE)` megtalálja a rendszeren vagy egy saját prefixben)
-- SDL2 (Arch: `sudo pacman -S ogre sdl2 cmake ninja gcc`)
+- SDL2 (Arch: `sudo pacman -S ogre sdl2 cmake ninja gcc pkgconf`)
 
 **Linux / Arch** — egy lépésben (pacman + cmake + build), **és ha akarod ugyanazon a gépen Tailscale-t is** (`tailscaled`):
 

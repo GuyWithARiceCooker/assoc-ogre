@@ -35,8 +35,8 @@ fetch_via_zip() {
   cleanup
 }
 
-echo ">>> 1/4 Pacman: OGRE + git + SDL2 + cmake + unzip (ZIP-hez)"
-sudo pacman -S --needed --noconfirm git ogre sdl2 cmake ninja gcc unzip curl
+echo ">>> Pacman: OGRE + git + SDL2 + cmake + toolchain + pkgconf (SDL cmake)"
+sudo pacman -S --needed --noconfirm git ogre sdl2 cmake ninja gcc pkgconf unzip curl
 
 export CMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH:-/usr}"
 

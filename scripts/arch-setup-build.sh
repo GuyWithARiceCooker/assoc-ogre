@@ -20,8 +20,8 @@ if ! command -v pacman >/dev/null 2>&1; then
   exit 1
 fi
 
-echo ">>> Pacman: ogre, sdl2, cmake, ninja, gcc"
-sudo pacman -S --needed --noconfirm ogre sdl2 cmake ninja gcc
+echo ">>> Pacman: ogre, sdl2, cmake, ninja, gcc, pkgconf"
+sudo pacman -S --needed --noconfirm ogre sdl2 cmake ninja gcc pkgconf
 
 echo ">>> CMake configure"
 cmake -S . -B build
