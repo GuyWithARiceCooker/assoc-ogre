@@ -18,7 +18,6 @@
 #include "OgreInput.h"
 #include "OgreRTShaderSystem.h"
 #include "OgrePlane.h"
-#include "OgreSubentity.h"
 #include "OgreTechnique.h"
 #include "OgreFont.h"
 #include "OgreFontManager.h"
@@ -26,6 +25,8 @@
 #include "OgreMovableObject.h"
 #include "OgreResourceGroupManager.h"
 #include "OgreTextureUnitState.h"
+
+#include "AssocLinuxWaylandEnv.h"
 
 #include <cstdint>
 #include <memory>
@@ -198,7 +199,7 @@ public:
         mGroundNode->setPosition(0.0f, 0.0f, 0.0f);
         mGroundNode->attachObject(ground);
         ground->setMaterialName("Examples/Rockwall", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-        mGroundNode->pitch(Ogre::Degree(180.0f));
+        // +Y normál — ne pitch(180), különben felülről a hátoldal (cull) látszana
 
         mHead = mScene->createEntity("assocHeadL", "ogrehead.mesh",
             Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
@@ -352,6 +353,7 @@ private:
 
 int main(int /*argc*/, char* /*argv*/[])
 {
+    AssocLinuxEnv::applyLinuxDisplayEnvForOgre();
     try
     {
         AssocApp app;

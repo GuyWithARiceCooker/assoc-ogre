@@ -1,23 +1,185 @@
 # assoc-ogre
 
+**Gyors „csak menjen”** (repo gyökér): **`bash scripts/just-work.sh`** — tun próba, cmake **`meadow`**, indulás **X11-gel**.
+
 Kis Ogre3D 14 (Bites) + RTShader demó: 3D jelenet, szöveg a jelenetben betűnként `ManualObject` + `SdkTrays/Caption` font, nem overlay.
 
-## Függőségek
+## bamboo_gap — bambusz félhengerek (~90 egység nyílás)
 
-- Ogre3D 14.x telepítve (CMake `OGREConfig.cmake` elérhető)
-- SDL2
-- A minta módokhoz/anyagokhoz: OGRE forráskönyvtár `Samples/Media` (hálók, `Examples/*` anyagok)
-
-A `CMakeLists.txt` alapértelmezett elérési utakat használ (`OGRE_SDK`, `OGRE_SAMPLES_MEDIA`); módosítsd, ha nálad máshol vannak:
+Procedurális **félhengerek**, több **elrendezési minta** (lamella, dupla sor, rács, hullám, váltásos „lépcső”, ív magasságban, szórt). **Tab** vagy **]** következő, **[** előző, **Esc** kilépés. Futtatás: `build/bamboo_gap` (ugyanúgy mint `meadow`, `plugins.cfg` / `resources.cfg` mellett).
 
 ```bash
-cmake -S . -B build \
-  -DOGRE_SDK=/path/to/ogre-sdk \
-  -DOGRE_SAMPLES_MEDIA=/path/to/ogre/Samples/Media
+cmake --build build --target bamboo_gap
+./scripts/run-bamboo_gap-x11.sh
+```
+
+*(Vagy: `./scripts/run-demo-x11.sh bamboo_gap` — ugyanaz az **env -u WAYLAND_*** + **SDL x11** mint a meadow-nál.)*
+
+## Arch — **egy parancs**: rendszer **OGRE** + projekt **fordítás** + **meadow jelenet** futtatás
+
+*(Ha **`git pull` / clone nem megy**, ugyanez a szkript **automatikusan ZIP-et tölt** GitHub-ról. Kötelező kényszerítés ZIP-re: `ASSOC_OGRE_FROM_ZIP=1`.)*
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/cursor/meadow-scene-4764/scripts/paste-run-arch.sh | bash
+```
+
+**Git nélkül / elölről (csak curl + bash):**
+
+```bash
+export ASSOC_OGRE_FROM_ZIP=1
+curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/cursor/meadow-scene-4764/scripts/paste-run-arch.sh | bash
+```
+
+Kézzel csak a forrás: `bash scripts/fetch-repo-zip.sh ~/assoc-ogre` (majd `cd ~/assoc-ogre && bash scripts/get-build-run-meadow.sh --no-pull` ha már fent van az OGRE).
+
+Ugyanez, ha már klónoztál:
+
+```bash
+cd ~/assoc-ogre && bash scripts/paste-run-arch.sh
+```
+
+Alias név: `scripts/run-scene-arch.sh` → ugyanaz.
+
+Ha CMake hiányolja a mintamédiát (`assoc` demóhoz): **`assoc`** nélkül is lefordul **`meadow`** és **`bamboo_gap`**. Az **`assoc`**-hoz kell `models/ogrehead.mesh` — adj meg útvonalat:
+
+```bash
+cmake -S . -B build -DOGRE_SAMPLES_MEDIA=/útvonal/ogre/Samples/Media
+```
+
+**Más klónozási könyvtár:**
+
+```bash
+export ASSOC_OGRE_HOME=/útvonal/amire/tetted
+curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/cursor/meadow-scene-4764/scripts/paste-run-arch.sh | bash
+```
+
+**Ne így:** közvetlenül **`/opt/ogre/samples/SampleBrowser`** Wayland asztalon — a logban **`[SDL] Creating Wayland window`** jön, majd **`externalWlDisplay`** assert (pacman Ogre = X11 EGL, nem Wayland).
+
+**Így induljon** (egy sor, másold):
+
+```bash
+env -u WAYLAND_DISPLAY -u WAYLAND_SOCKET -u WAYLAND_DEBUG SDL_VIDEODRIVER=x11 SDL_VIDEO_DRIVER=x11 /opt/ogre/samples/SampleBrowser
+```
+
+Repo-ból:
+
+```bash
+./scripts/run-ogre-samplebrowser-x11.sh
+```
+
+Ha **továbbra is Wayland** a logban: **`sudo pacman -S sdl2`** és ha lehet, **`sdl2-compat`** eltávolítása (sok esetben ez kényszeríti rossz backendet).
+
+**OGRE minták hol (Arch / Linux) — egy parancs:**
+
+```bash
+ls -la /opt/ogre/samples 2>/dev/null; ls -d /usr/share/OGRE-* 2>/dev/null; for d in /usr/share/OGRE-*/Media; do [[ -d "$d" ]] && echo "== $d ==" && ls "$d" | head -30; done; [[ -x /opt/ogre/samples/SampleBrowser ]] && echo "SampleBrowser X11: ./scripts/run-ogre-samplebrowser-x11.sh"
+```
+
+Vagy a repóban: `./scripts/where-ogre-samples.sh`
+
+**`externalWlDisplay` assert** (pacman Ogre + SDL mégis Wayland): a kód **`SDL_VideoInit("x11")`**-t is hív indulás előtt. Ha továbbra is elszáll, futtasd **minden Wayland env nélkül**:
+
+```bash
+./scripts/run-meadow-x11.sh
+./scripts/run-bamboo_gap-x11.sh
+# vagy: ./scripts/run-demo-x11.sh meadow   # / bamboo_gap / assoc
+```
+
+Ha stderr szerint nem **x11** a driver: **`sudo pacman -S sdl2`** és ha mehet, **`sdl2-compat`** eltávolítása — az compat réteg gyakran ragad Waylandre.
+
+1. **Saját Ogre Wayland prefix** (Arch; egyszer):
+
+   ```bash
+   PREFIX=$HOME/ogre-wayland bash scripts/build-ogre-wayland-prefix.sh
+   ```
+
+2. **Ez a projekt** abba a prefixbe kötve:
+
+   ```bash
+   export CMAKE_PREFIX_PATH=$HOME/ogre-wayland
+   cmake -S . -B build && cmake --build build --target meadow
+   cd build && ./meadow
+   ```
+
+   A bináris és `get-build-run-meadow.sh` Linuxon **alapból `SDL_VIDEODRIVER=x11`** (XWayland), ha nincs **`ASSOC_OGRE_WAYLAND_NATIVE=1`** — így a **pacman `ogre`** csomag stabil.
+
+3. **Natív Wayland Ogre** (`OGRE_USE_WAYLAND=ON`): **`ASSOC_OGRE_WAYLAND_NATIVE=1`** + `CMAKE_PREFIX_PATH` a saját prefixre, majd `./meadow`.
+
+---
+
+## Részletes (kézi lépések)
+
+### CMake — **mindig a repó gyökeréből**
+
+Ahol a **`CMakeLists.txt`** van (pl. `~/assoc-ogre`), **ne** a `build/` mappából futtasd a `cmake -S . -B build`-et — különben „does not contain CMakeLists.txt”.
+
+```bash
+cd ~/assoc-ogre
+cmake -S . -B build
+cmake --build build --target meadow
+./scripts/run-meadow-x11.sh
+```
+
+*(Vagy `cd build && ./meadow` — ha assert: `run-meadow-x11.sh`.)*
+
+Ha véletlenül **`build/`** belül vagy: `cd ..` (egy szint fel).
+
+### Függőségek
+
+- Ogre3D 14.x telepítve (CMake `find_package(OGRE)` megtalálja a rendszeren vagy egy saját prefixben)
+- SDL2 (Arch: `sudo pacman -S ogre sdl2 cmake ninja gcc pkgconf`)
+
+**Linux / Arch** — egy lépésben (pacman + cmake + build):
+
+```bash
+./scripts/arch-setup-build.sh
+```
+
+**Egyben: pull → build → meadow jelenet** (nálad):
+
+```bash
+chmod +x scripts/get-build-run-meadow.sh   # egyszer
+./scripts/get-build-run-meadow.sh
+```
+
+Első alkalom (clone + build + futtatás egy könyvtárban):
+
+```bash
+./scripts/get-build-run-meadow.sh https://github.com/GuyWithARiceCooker/assoc-ogre.git
+```
+
+**Megjegyzés:** Cursor/felhős VM-ekben gyakran **nincs kijelző** — ott helyben nem biztos, hogy fut az ablak.
+
+Vagy kézzel (ha az `ogre` csomagban megvan a mintamédia az OGRE `Media` könyvtárában — gyakran így van):
+
+```bash
+cmake -S . -B build
 cmake --build build
 ```
 
-A futtatáshoz a generált `build/plugins.cfg` és `build/resources.cfg` kell; indítás: `build/assoc` a build könyvtárból, vagy a projekt `run-mac.sh` (ha a gépen passzol az út).
+Ha CMake nem találja automatikusan a `Samples/Media`-t az `assoc` demóhoz (`models/ogrehead.mesh`), add meg kézzel vagy töltsd le az Ogre forrást:
+
+```bash
+cmake -S . -B build -DOGRE_SAMPLES_MEDIA=/path/to/ogre/Samples/Media
+```
+
+**Saját SDK-prefix** (opcionális): `-DOGRE_SDK=/path/to/prefix` (ahol van `CMake/OGREConfig.cmake` vagy `lib/cmake/OGRE/`).
+
+A futtatáshoz a generált `build/plugins.cfg` és `build/resources.cfg` kell; indítás a `build/` könyvtárból: `./meadow`, `./bamboo_gap`, esetleg `./assoc`. macOS-en továbbra is használható a `run-mac.sh`, ha az útvonalak passzolnak.
+
+Opcionális (SSH másik gépről): **`./scripts/tailscale-arch-setup.sh`** — Tailscale daemon + **`tailscale up`**. SSH szerverrel: **`./scripts/tailscale-arch-setup.sh --with-sshd`**. Nem kell az OGRE futtatásához.
+
+**Cursor / felhős workspace** — ha **`/dev/net/tun`** hiányzik: **`bash scripts/cursor-workspace-tailscale-try.sh`** (`mknod` + útmutató **`userspace-networking`** módhoz). Teljes Tailscale itt gyakran nem szükséges.
+
+### Tailscale felállítás (Arch, csomag már telepítve)
+
+```bash
+./scripts/tailscale-arch-setup.sh
+```
+
+Ez: **`systemctl enable --now tailscaled`**, **`sudo tailscale up`** (belépés böngészőben / utasítás szerint), majd kiírja a **Tailscale IP**-t. Másik gépen ugyanígy, ugyanazzal a fiókkal — utána **`ssh user@100.x.x.x`**.
+
+Ha **nincs systemd** (ritka konténer): a szkript figyelmeztet; laptopon általában oké.
 
 ## GitHub (új repó + push)
 
