@@ -114,3 +114,13 @@ set_target_properties(assoc PROPERTIES
 set_target_properties(meadow PROPERTIES
   BUILD_RPATH "${_ogre_rpath}"
   BUILD_WITH_INSTALL_RPATH FALSE)
+
+add_executable(bamboo_gap
+  src/BambooGapApp.cpp)
+
+target_link_libraries(bamboo_gap PRIVATE OgreBites)
+target_include_directories(bamboo_gap PRIVATE ${OGRE_INCLUDE_DIRS})
+
+set_target_properties(bamboo_gap PROPERTIES
+  BUILD_RPATH "${_ogre_rpath}"
+  BUILD_WITH_INSTALL_RPATH FALSE)

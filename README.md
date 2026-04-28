@@ -2,7 +2,14 @@
 
 Kis Ogre3D 14 (Bites) + RTShader demó: 3D jelenet, szöveg a jelenetben betűnként `ManualObject` + `SdkTrays/Caption` font, nem overlay.
 
-## Arch — **egy parancs**: rendszer **OGRE** + projekt **fordítás** + **meadow jelenet** futtatás
+## bamboo_gap — bambusz félhengerek (~90 egység nyílás)
+
+Procedurális **félhengerek**, több **elrendezési minta** (lamella, dupla sor, rács, hullám, váltásos „lépcső”, ív magasságban, szórt). **Tab** vagy **]** következő, **[** előző, **Esc** kilépés. Futtatás: `build/bamboo_gap` (ugyanúgy mint `meadow`, `plugins.cfg` / `resources.cfg` mellett).
+
+```bash
+cmake --build build --target bamboo_gap
+cd build && ./bamboo_gap
+```
 
 *(Ha **`git pull` / clone nem megy**, ugyanez a szkript **automatikusan ZIP-et tölt** GitHub-ról. Kötelező kényszerítés ZIP-re: `ASSOC_OGRE_FROM_ZIP=1`.)*
 
