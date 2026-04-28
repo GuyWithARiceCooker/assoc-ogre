@@ -30,25 +30,38 @@ cmake -S . -B build -DOGRE_SAMPLES_MEDIA=/path/to/ogre/Samples/Media
 
 A futtatáshoz a generált `build/plugins.cfg` és `build/resources.cfg` kell; indítás a `build/` könyvtárból: `./assoc` vagy `./meadow`. macOS-en továbbra is használható a `run-mac.sh`, ha az útvonalak passzolnak.
 
-## Tailscale-kapcsolat (távoli gép ↔ laptop)
+## Tailscale (laptop ↔ másik gép)
 
-Ha a **laptopodon** fordítasz és futtatsz, de máshonnan (másik gépről) akarsz **SSH-t vagy fájlmásolást** ugyanazon a magánhálón:
+**Alapelv:** mindkét gépen telepítve a Tailscale, **ugyanazzal a fiókkal** belépve ([login.tailscale.com](https://login.tailscale.com)) — így minden **magán IP-n** (`100.x.y.z`) elérhető egymástól, NAT/portnyitás nélkül.
 
-1. **Arch laptop:** telepítés és felkapcsolás (egyszer):
-   ```bash
-   sudo pacman -S tailscale
-   sudo systemctl enable --now tailscaled
-   sudo tailscale up
-   ```
-   A `tailscale status` kiírja a laptop **Tailscale IP**-jét (pl. `100.x.y.z`).
+### Arch — egy szkript
 
-2. **Másik gépről SSH** a projekthez / terminálhoz (ha az SSH szerver fut a laptopon):
-   ```bash
-   ssh felhasználó@100.x.y.z
-   ```
-   Innen ugyanúgy `git pull`, `./scripts/arch-setup-build.sh`, majd `cd build && ./meadow` — de az **ablak a laptop kijelzőjén** nyílik meg (helyi X/Wayland), hacsak nem állítasz be **X11 továbbítást** (`ssh -Y`) vagy más távoli megjelenítést.
+```bash
+./scripts/tailscale-arch-setup.sh
+```
 
-3. **Repó / kód szinkron** Tailscale-en keresztül nem kötelező: elég a **GitHub** (`git pull` / `git push`). A Tailscale inkább a **biztonságos elérést** adja (SSH, scp, rsync) a két gép között ugyanazon a TS-hálón.
+Ez telepíti a `tailscale`-et és az `openssh`-t, elindítja a daemont, majd `tailscale up`-pal felkapcsol (kövesd a böngészőt / utasításokat). SSH távolról:
+
+```bash
+sudo systemctl enable --now sshd
+ssh felhasználó@$(tailscale ip -4)
+```
+
+A másik gépen is: Tailscale telepítés + `tailscale up` ugyanazzal a fiókkal. Utána onnan: `ssh felhasználó@<laptop Tailscale IP>`.
+
+### Mit ad meg a Tailscale itt
+
+| Cél | Hogyan |
+|-----|--------|
+| **SSH** a laptop termináljára | TS IP + `sshd` (lásd fent) |
+| **scp/rsync** projekt / fájl | `scp -r . felhasználó@100.x.y.z:assoc-ogre/` |
+| **Kód szinkron** | GitHub (`git pull`) — TS nélkül is megy; TS = közvetlen SSH/rsync TS IP-n |
+
+### OGRE ablak
+
+Ha SSH-n futtatod `./meadow`-t, az **alapból a laptop kijelzőjén** nyílik (nem a távoli gépen). Távoli megjelenítéshez külön kell **X11 forward** (`ssh -Y`) vagy más (pl. waypipe), ez nem része ennek a projektnek.
+
+Opciók az admin felületen: **MagicDNS** (hostname `laptopnév.tailnet…`), **ACL** / subnet route — lásd [Tailscale docs](https://tailscale.com/kb/).
 
 ## GitHub (új repó + push)
 
