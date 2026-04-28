@@ -37,7 +37,7 @@ Vagy a repóban: `./scripts/where-ogre-samples.sh`
 
 ### Wayland
 
-**A)** **Gyors (Arch `ogre` csomag):** a rendszer-Ogre gyakran **nem** Waylandes; a repo szkript Wayland alatt **`SDL_VIDEODRIVER=x11`** (XWayland), hogy ne omoljon össze (`externalWlDisplay`).
+**A)** **Gyors (Arch `ogre` csomag):** a rendszer-Ogre gyakran **nem** Waylandes. A demó bináris Linuxon **indulás előtt** beállítja `SDL_VIDEODRIVER=x11` Wayland sessionben (XWayland), kivéve ha már `SDL_VIDEODRIVER` vagy `ASSOC_OGRE_WAYLAND_NATIVE=1` van beállítva. A shell szkriptek ugyanezt erősítik meg.
 
 **B)** **Natív Wayland:** fordíts **saját Ogre-t** `OGRE_USE_WAYLAND=ON`-nal (lásd lent), telepíts egy prefixbe, majd:
 

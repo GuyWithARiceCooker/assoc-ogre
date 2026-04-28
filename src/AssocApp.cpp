@@ -26,6 +26,8 @@
 #include "OgreResourceGroupManager.h"
 #include "OgreTextureUnitState.h"
 
+#include "AssocLinuxWaylandEnv.h"
+
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -351,6 +353,7 @@ private:
 
 int main(int /*argc*/, char* /*argv*/[])
 {
+    AssocLinuxEnv::preferX11ForDistroOgreOnWayland();
     try
     {
         AssocApp app;

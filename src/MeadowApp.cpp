@@ -12,6 +12,8 @@
 #include "OgreMaterialManager.h"
 #include "OgreResourceGroupManager.h"
 
+#include "AssocLinuxWaylandEnv.h"
+
 #include <cmath>
 #include <random>
 
@@ -363,6 +365,7 @@ private:
 
 int main(int /*argc*/, char* /*argv*/[])
 {
+    AssocLinuxEnv::preferX11ForDistroOgreOnWayland();
     try
     {
         MeadowApp app;
