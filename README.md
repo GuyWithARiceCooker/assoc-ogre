@@ -57,7 +57,7 @@ ls -la /opt/ogre/samples 2>/dev/null; ls -d /usr/share/OGRE-* 2>/dev/null; for d
 
 Vagy a repóban: `./scripts/where-ogre-samples.sh`
 
-**Megjegyzés (Wayland + pacman Ogre):** indulás előtt **`WAYLAND_DISPLAY` / `WAYLAND_SOCKET` törlése** + **`SDL_VIDEODRIVER=x11`** (XWayland) — kód: `AssocLinuxWaylandEnv.cpp` (Arch `sdl2-compat` mellett is).
+**Ha még mindig Wayland ablak** (log: `externalWlDisplay`): a bináris induláskor **`SDL_Init` + x11** zárolja a videót; ha a stderr szerint nem **x11** a driver, telepíts **natív SDL2** a compat helyett: `sudo pacman -S sdl2` és távolítsd el a **`sdl2-compat`**-ot, majd újra fordítás.
 
 1. **Saját Ogre Wayland prefix** (Arch; egyszer):
 
