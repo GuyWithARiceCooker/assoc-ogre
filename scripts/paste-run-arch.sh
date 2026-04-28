@@ -1,21 +1,38 @@
 #!/usr/bin/env bash
-# Arch Linux: egy paste — **OGRE csomag + SDL/toolchain**, repo (**clone/pull vagy ZIP**), **meadow** build + futtatás.
+# Arch Linux: OGRE csomag + SDL/toolchain, repo (git vagy ZIP), meadow build + futtatás.
+# curl | bash esetén nincs BASH_SOURCE — a ZIP logika be van ágyazva (nem külső útvonal).
 #
-# Ha git nem megy: ASSOC_OGRE_FROM_ZIP=1 vagy automatikus ZIP fallback clone hiba után.
-# Használat:
-#   curl -fsSL .../paste-run-arch.sh | bash
-#   bash scripts/paste-run-arch.sh
+# Ha git nem megy: ASSOC_OGRE_FROM_ZIP=1 vagy automatikus ZIP fallback.
 set -euo pipefail
 
 REPO="${ASSOC_OGRE_HOME:-$HOME/assoc-ogre}"
 BRANCH="${ASSOC_OGRE_BRANCH:-cursor/meadow-scene-4764}"
 URL="${ASSOC_OGRE_URL:-https://github.com/GuyWithARiceCooker/assoc-ogre.git}"
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OWNER_REPO="${ASSOC_OGRE_GITHUB:-GuyWithARiceCooker/assoc-ogre}"
 
 fetch_via_zip() {
-  echo ">>> Forrás: GitHub ZIP ($BRANCH) — git nélkül / git hiba után"
-  bash "$SCRIPT_DIR/fetch-repo-zip.sh" "$REPO"
+  echo ">>> Forrás: GitHub ZIP ($BRANCH) — git nélkül / curl-bash kompatibilis"
+  local BRANCH_ESC="${BRANCH//\//%2F}"
+  local ZIP_URL="https://github.com/${OWNER_REPO}/archive/refs/heads/${BRANCH_ESC}.zip"
+  local TMP
+  TMP="$(mktemp -d)"
+  cleanup() { rm -rf "$TMP"; }
+  trap cleanup EXIT
+  curl -fsSL "$ZIP_URL" -o "$TMP/archive.zip"
+  unzip -q "$TMP/archive.zip" -d "$TMP"
+  local EXTRACTED
+  EXTRACTED="$(find "$TMP" -mindepth 1 -maxdepth 1 -type d ! -name '*.zip' | head -1)"
+  if [[ -z "$EXTRACTED" || ! -d "$EXTRACTED" ]]; then
+    echo "Hiba: üres ZIP kicsomagolás"
+    exit 1
+  fi
+  if [[ -e "$REPO" ]]; then
+    echo ">>> Régi könyvtár törlése: $REPO"
+    rm -rf "$REPO"
+  fi
+  mv "$EXTRACTED" "$REPO"
+  trap - EXIT
+  cleanup
 }
 
 echo ">>> 1/4 Pacman: OGRE + git + SDL2 + cmake + unzip (ZIP-hez)"
@@ -38,7 +55,7 @@ else
     git fetch origin || true
   fi
   if ! git checkout "$BRANCH" 2>/dev/null; then
-    echo ">>> checkout / fetch gond — próbáld: ASSOC_OGRE_FROM_ZIP=1 , vagy ZIP felülírás"
+    echo ">>> checkout / fetch gond — ZIP felülírás"
     cd /
     fetch_via_zip
   else
@@ -51,6 +68,6 @@ else
 fi
 
 cd "$REPO"
-echo ">>> 3/4 projekt: cmake + fordítás (meadow); distro ogre assert: ASSOC_OGRE_USE_XWAYLAND=1"
-echo ">>> 4/4 Meadow scene: ./meadow (Esc kilépés)"
+echo ">>> 3/4 projekt: cmake + meadow; Wayland+pacman ogre: SDL XWayland auto (ASSOC_OGRE_WAYLAND_NATIVE=1 natív WL Ogre)"
+echo ">>> 4/4 ./meadow"
 exec bash "$REPO/scripts/get-build-run-meadow.sh" --no-pull

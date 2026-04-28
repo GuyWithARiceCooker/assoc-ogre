@@ -11,8 +11,8 @@
 #   ./scripts/get-build-run-meadow.sh https://github.com/GuyWithARiceCooker/assoc-ogre.git
 #   ./scripts/get-build-run-meadow.sh https://github.com/GuyWithARiceCooker/assoc-ogre.git ../assoc-ogre
 #
-# Ha csak az Arch `ogre` csomagod van (nem Waylandes), és assert jön:
-#   export ASSOC_OGRE_USE_XWAYLAND=1
+# Ha csak az Arch `ogre` csomagod van (nem Waylandes), és assert jön (régi bináris):
+#   SDL_VIDEODRIVER=x11 ./meadow
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -74,10 +74,13 @@ cmake -S . -B build "${CMAKE_EXTRA[@]}"
 echo ">>> cmake build (meadow)"
 cmake --build build --target meadow
 
-# Optional: distro ogre without Wayland → XWayland
-if [[ -z "${SDL_VIDEODRIVER:-}" ]] && [[ -n "${ASSOC_OGRE_USE_XWAYLAND:-}" ]]; then
-  export SDL_VIDEODRIVER=x11
-  echo ">>> ASSOC_OGRE_USE_XWAYLAND: SDL_VIDEODRIVER=x11 (XWayland fallback)"
+# pacman ogre: Wayland SDL + X11-only Ogre EGL → externalWlDisplay assert; default XWayland.
+# Native Wayland Ogre: ASSOC_OGRE_WAYLAND_NATIVE=1
+if [[ -z "${SDL_VIDEODRIVER:-}" ]] && [[ "${ASSOC_OGRE_WAYLAND_NATIVE:-}" != "1" ]]; then
+  if [[ "${XDG_SESSION_TYPE:-}" == wayland ]] || [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+    export SDL_VIDEODRIVER=x11
+    echo ">>> Wayland desktop + distro Ogre: SDL_VIDEODRIVER=x11 (XWayland). Natív WL Ogre: ASSOC_OGRE_WAYLAND_NATIVE=1"
+  fi
 fi
 
 echo ">>> ./meadow (working dir: build/)"
