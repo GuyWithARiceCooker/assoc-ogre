@@ -167,6 +167,8 @@ A futtatáshoz a generált `build/plugins.cfg` és `build/resources.cfg` kell; i
 
 Opcionális (SSH másik gépről): **`./scripts/tailscale-arch-setup.sh`** — Tailscale daemon + **`tailscale up`**. SSH szerverrel: **`./scripts/tailscale-arch-setup.sh --with-sshd`**. Nem kell az OGRE futtatásához.
 
+**Cursor / felhős workspace** — ha **`/dev/net/tun`** hiányzik: **`bash scripts/cursor-workspace-tailscale-try.sh`** (`mknod` + útmutató **`userspace-networking`** módhoz). Teljes Tailscale itt gyakran nem szükséges.
+
 ### Tailscale felállítás (Arch, csomag már telepítve)
 
 ```bash
