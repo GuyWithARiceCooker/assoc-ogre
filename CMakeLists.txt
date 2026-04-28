@@ -48,8 +48,18 @@ add_executable(assoc
 target_link_libraries(assoc PRIVATE OgreBites)
 target_include_directories(assoc PRIVATE ${OGRE_INCLUDE_DIR})
 
+add_executable(meadow
+  src/MeadowApp.cpp)
+
+target_link_libraries(meadow PRIVATE OgreBites)
+target_include_directories(meadow PRIVATE ${OGRE_INCLUDE_DIR})
+
 # futásidőben: dylib-ek és cfg a mellett
 set_target_properties(assoc PROPERTIES
+  BUILD_RPATH "${OGRE_SDK}/lib;${OGRE_SDK}/lib/OGRE"
+  BUILD_WITH_INSTALL_RPATH FALSE)
+
+set_target_properties(meadow PROPERTIES
   BUILD_RPATH "${OGRE_SDK}/lib;${OGRE_SDK}/lib/OGRE"
   BUILD_WITH_INSTALL_RPATH FALSE)
 
