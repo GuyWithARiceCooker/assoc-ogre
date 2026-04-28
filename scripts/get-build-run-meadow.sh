@@ -74,13 +74,10 @@ cmake -S . -B build "${CMAKE_EXTRA[@]}"
 echo ">>> cmake build (meadow)"
 cmake --build build --target meadow
 
-# pacman ogre: Wayland SDL + X11-only Ogre EGL → externalWlDisplay assert; default XWayland.
-# Native Wayland Ogre: ASSOC_OGRE_WAYLAND_NATIVE=1
+# Pacman ogre: force SDL x11 (XWayland). Native Wayland Ogre: ASSOC_OGRE_WAYLAND_NATIVE=1
 if [[ -z "${SDL_VIDEODRIVER:-}" ]] && [[ "${ASSOC_OGRE_WAYLAND_NATIVE:-}" != "1" ]]; then
-  if [[ "${XDG_SESSION_TYPE:-}" == wayland ]] || [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
-    export SDL_VIDEODRIVER=x11
-    echo ">>> Wayland desktop + distro Ogre: SDL_VIDEODRIVER=x11 (XWayland). Natív WL Ogre: ASSOC_OGRE_WAYLAND_NATIVE=1"
-  fi
+  export SDL_VIDEODRIVER=x11
+  echo ">>> SDL_VIDEODRIVER=x11 (Linux distro Ogre). Natív Wayland Ogre: ASSOC_OGRE_WAYLAND_NATIVE=1"
 fi
 
 echo ">>> ./meadow (working dir: build/)"

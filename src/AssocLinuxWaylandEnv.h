@@ -1,23 +1,20 @@
 /**
  * Linux display backend before SDL / Ogre init.
  *
- * Arch **`pacman -S ogre`** is usually **X11 EGL only** (no OGRE_USE_WAYLAND). If SDL opens a
- * **native Wayland** window, Ogre still uses **OgreX11EGLWindow** → `externalWlDisplay` assert.
+ * Arch **`pacman -S ogre`** matches **SDL video driver x11** (XWayland on Wayland desktops). Native SDL Wayland
+ * + distro Ogre leads to **externalWlDisplay** assert.
  *
- * **Default:** on Wayland sessions, set **`SDL_VIDEODRIVER=x11`** (XWayland) unless overridden.
+ * **Default:** **`SDL_VIDEODRIVER=x11`** on all Linux runs unless already set.
  *
- * **Native Wayland** (Ogre built with **OGRE_USE_WAYLAND=ON**): set before running:
- *   export ASSOC_OGRE_WAYLAND_NATIVE=1
- * then SDL may use Wayland and Ogre's Wayland window path.
+ * **Native Wayland Ogre** (`OGRE_USE_WAYLAND=ON`): run with **`ASSOC_OGRE_WAYLAND_NATIVE=1`** so SDL can pick Wayland.
  *
- * Overrides: `SDL_VIDEODRIVER` (always wins), `ASSOC_OGRE_WAYLAND_NATIVE=1` (skip forcing x11).
+ * Overrides: `SDL_VIDEODRIVER` always wins if set before main().
  */
 #pragma once
 
 #if defined(__linux__)
 
 #include <cstdlib>
-#include <cstring>
 
 namespace AssocLinuxEnv
 {
@@ -31,13 +28,7 @@ inline void applyLinuxDisplayEnvForOgre()
     {
         return;
     }
-    char const* const sessionType{std::getenv("XDG_SESSION_TYPE")};
-    bool const waylandSession{sessionType != nullptr && std::strcmp(sessionType, "wayland") == 0};
-    bool const hasWlDisp{std::getenv("WAYLAND_DISPLAY") != nullptr};
-    if (waylandSession || hasWlDisp)
-    {
-        ::setenv("SDL_VIDEODRIVER", "x11", 1);
-    }
+    ::setenv("SDL_VIDEODRIVER", "x11", 1);
 }
 } // namespace AssocLinuxEnv
 

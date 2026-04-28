@@ -68,6 +68,6 @@ else
 fi
 
 cd "$REPO"
-echo ">>> 3/4 projekt: cmake + meadow; Wayland+pacman ogre: SDL XWayland auto (ASSOC_OGRE_WAYLAND_NATIVE=1 natív WL Ogre)"
+echo ">>> 3/4 projekt: cmake + meadow; Linux: SDL x11 alapból (ASSOC_OGRE_WAYLAND_NATIVE=1 natív WL Ogre)"
 echo ">>> 4/4 ./meadow"
 exec bash "$REPO/scripts/get-build-run-meadow.sh" --no-pull

@@ -71,17 +71,9 @@ Vagy a repóban: `./scripts/where-ogre-samples.sh`
    cd build && ./meadow
    ```
 
-   A bináris és `get-build-run-meadow.sh` **Wayland asztalon alapból `SDL_VIDEODRIVER=x11`** (XWayland), ha nincs **`ASSOC_OGRE_WAYLAND_NATIVE=1`** — így a **pacman `ogre`** csomaggal nem törik el.
+   A bináris és `get-build-run-meadow.sh` Linuxon **alapból `SDL_VIDEODRIVER=x11`** (XWayland), ha nincs **`ASSOC_OGRE_WAYLAND_NATIVE=1`** — így a **pacman `ogre`** csomag stabil.
 
-3. **Csak pacman `ogre` + Wayland asztal:** általában **nem kell** semmit exportálni (automatikus XWayland). Ha mégis natív SDL-Wayland kellene és assert: ellenőrizd, hogy friss build fut (`AssocLinuxWaylandEnv.h`).
-
-4. **Explicit letiltás az X11 fallbacknek** (saját Waylandes Ogre):  
-
-   ```bash
-   export ASSOC_OGRE_WAYLAND_NATIVE=1
-   export CMAKE_PREFIX_PATH=$HOME/ogre-wayland
-   cd build && ./meadow
-   ```
+3. **Natív Wayland Ogre** (`OGRE_USE_WAYLAND=ON`): **`ASSOC_OGRE_WAYLAND_NATIVE=1`** + `CMAKE_PREFIX_PATH` a saját prefixre, majd `./meadow`.
 
 ---
 
