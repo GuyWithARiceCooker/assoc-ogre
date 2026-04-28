@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Arch pacman Ogre SampleBrowser — ugyanaz az externalWlDisplay assert (SDL Wayland vs X11 EGL).
-# Használat:
+# Arch pacman Ogre SampleBrowser — NE így: /opt/ogre/samples/SampleBrowser (Wayland → externalWlDisplay assert).
+# Használat (repo gyökérből):
 #   ./scripts/run-ogre-samplebrowser-x11.sh
-# Vagy egy sor:
-#   env -u WAYLAND_DISPLAY -u WAYLAND_SOCKET SDL_VIDEODRIVER=x11 /opt/ogre/samples/SampleBrowser
+#
+# Egy sor (másold be — Wayland env törlése + SDL x11 kötelező):
+#   env -u WAYLAND_DISPLAY -u WAYLAND_SOCKET -u WAYLAND_DEBUG SDL_VIDEODRIVER=x11 SDL_VIDEO_DRIVER=x11 /opt/ogre/samples/SampleBrowser
 set -euo pipefail
 
 for CAND in \
@@ -23,6 +24,12 @@ if [[ -z "${BIN:-}" ]]; then
   exit 1
 fi
 
-echo ">>> $BIN (SDL x11 / XWayland, Wayland env nélkül)"
+echo ">>> Indítás: $BIN"
+echo ">>> (WAYLAND_* törölve, SDL → x11 / XWayland — ha még Wayland log: pacman -S sdl2, sdl2-compat levétele)"
 exec env -u WAYLAND_DISPLAY -u WAYLAND_SOCKET -u WAYLAND_DEBUG \
-  SDL_VIDEODRIVER=x11 SDL_VIDEO_DRIVER=x11 "$BIN" "$@"
+  HOME="${HOME:-}" USER="${USER:-}" PATH="${PATH:-}" \
+  DISPLAY="${DISPLAY:-:0}" \
+  XAUTHORITY="${XAUTHORITY:-}" \
+  SDL_VIDEODRIVER=x11 \
+  SDL_VIDEO_DRIVER=x11 \
+  "$BIN" "$@"

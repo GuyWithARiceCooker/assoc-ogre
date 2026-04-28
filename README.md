@@ -51,18 +51,26 @@ export ASSOC_OGRE_HOME=/útvonal/amire/tetted
 curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/cursor/meadow-scene-4764/scripts/paste-run-arch.sh | bash
 ```
 
-**OGRE SampleBrowser** (pacman `ogre`) — ugyanaz az assert Wayland alatt. Indítás:
+**Ne így:** közvetlenül **`/opt/ogre/samples/SampleBrowser`** Wayland asztalon — a logban **`[SDL] Creating Wayland window`** jön, majd **`externalWlDisplay`** assert (pacman Ogre = X11 EGL, nem Wayland).
+
+**Így induljon** (egy sor, másold):
+
+```bash
+env -u WAYLAND_DISPLAY -u WAYLAND_SOCKET -u WAYLAND_DEBUG SDL_VIDEODRIVER=x11 SDL_VIDEO_DRIVER=x11 /opt/ogre/samples/SampleBrowser
+```
+
+Repo-ból:
 
 ```bash
 ./scripts/run-ogre-samplebrowser-x11.sh
 ```
 
-*(vagy: `env -u WAYLAND_DISPLAY -u WAYLAND_SOCKET SDL_VIDEODRIVER=x11 /opt/ogre/samples/SampleBrowser`)*
+Ha **továbbra is Wayland** a logban: **`sudo pacman -S sdl2`** és ha lehet, **`sdl2-compat`** eltávolítása (sok esetben ez kényszeríti rossz backendet).
 
 **OGRE minták hol (Arch / Linux) — egy parancs:**
 
 ```bash
-ls -la /opt/ogre/samples 2>/dev/null; ls -d /usr/share/OGRE-* 2>/dev/null; for d in /usr/share/OGRE-*/Media; do [[ -d "$d" ]] && echo "== $d ==" && ls "$d" | head -30; done; [[ -x /opt/ogre/samples/SampleBrowser ]] && echo "Futtatás: /opt/ogre/samples/SampleBrowser"
+ls -la /opt/ogre/samples 2>/dev/null; ls -d /usr/share/OGRE-* 2>/dev/null; for d in /usr/share/OGRE-*/Media; do [[ -d "$d" ]] && echo "== $d ==" && ls "$d" | head -30; done; [[ -x /opt/ogre/samples/SampleBrowser ]] && echo "SampleBrowser X11: ./scripts/run-ogre-samplebrowser-x11.sh"
 ```
 
 Vagy a repóban: `./scripts/where-ogre-samples.sh`
