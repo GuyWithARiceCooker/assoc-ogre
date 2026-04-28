@@ -51,6 +51,14 @@ export ASSOC_OGRE_HOME=/útvonal/amire/tetted
 curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/cursor/meadow-scene-4764/scripts/paste-run-arch.sh | bash
 ```
 
+**OGRE SampleBrowser** (pacman `ogre`) — ugyanaz az assert Wayland alatt. Indítás:
+
+```bash
+./scripts/run-ogre-samplebrowser-x11.sh
+```
+
+*(vagy: `env -u WAYLAND_DISPLAY -u WAYLAND_SOCKET SDL_VIDEODRIVER=x11 /opt/ogre/samples/SampleBrowser`)*
+
 **OGRE minták hol (Arch / Linux) — egy parancs:**
 
 ```bash
