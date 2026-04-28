@@ -199,7 +199,7 @@ public:
         mGroundNode->setPosition(0.0f, 0.0f, 0.0f);
         mGroundNode->attachObject(ground);
         ground->setMaterialName("Examples/Rockwall", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-        mGroundNode->pitch(Ogre::Degree(180.0f));
+        // +Y normál — ne pitch(180), különben felülről a hátoldal (cull) látszana
 
         mHead = mScene->createEntity("assocHeadL", "ogrehead.mesh",
             Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);

@@ -253,7 +253,7 @@ public:
         mGroundNode = mScene->getRootSceneNode()->createChildSceneNode("ground");
         mGroundNode->attachObject(ground);
         ground->setMaterialName("Meadow/Ground");
-        mGroundNode->pitch(Ogre::Degree(180.0F));
+        // Ne fordíts 180°-ot: a sík normálja +Y marad, így a kamera felülről a megvilágított lapot látja.
 
         std::mt19937 rng{std::random_device{}()};
         std::uniform_real_distribution<float> xy{-field * 0.46F, field * 0.46F};

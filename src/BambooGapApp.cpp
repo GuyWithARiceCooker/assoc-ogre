@@ -201,7 +201,7 @@ public:
         Ogre::SceneNode* const fn{mScene->getRootSceneNode()->createChildSceneNode("floor")};
         fn->attachObject(fl);
         fl->setMaterialName("Bamboo/Floor");
-        fn->pitch(Ogre::Degree(180.0F));
+        // +Y normál marad — pitch(180) hátlapot mutatott volna felülről.
 
         // „Falak” a nyílás szélén (vizuális 90 cm köz)
         buildWallPlane("wL", Ogre::Vector3(-kGapHalf, 75.0F, 0.0F), Ogre::Vector3::UNIT_X);
