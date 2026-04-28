@@ -57,7 +57,16 @@ ls -la /opt/ogre/samples 2>/dev/null; ls -d /usr/share/OGRE-* 2>/dev/null; for d
 
 Vagy a repóban: `./scripts/where-ogre-samples.sh`
 
-**Ha még mindig Wayland ablak** (log: `externalWlDisplay`): a bináris induláskor **`SDL_Init` + x11** zárolja a videót; ha a stderr szerint nem **x11** a driver, telepíts **natív SDL2** a compat helyett: `sudo pacman -S sdl2` és távolítsd el a **`sdl2-compat`**-ot, majd újra fordítás.
+**`externalWlDisplay` assert** (pacman Ogre + SDL mégis Wayland): a kód **`SDL_VideoInit("x11")`**-t is hív indulás előtt. Ha továbbra is elszáll, futtasd **minden Wayland env nélkül**:
+
+```bash
+./scripts/run-meadow-x11.sh
+```
+
+vagy egy sorban:  
+`env -u WAYLAND_DISPLAY -u WAYLAND_SOCKET SDL_VIDEODRIVER=x11 ./build/meadow`
+
+Ha stderr szerint nem **x11** a driver: **`sudo pacman -S sdl2`** és ha mehet, **`sdl2-compat`** eltávolítása — az compat réteg gyakran ragad Waylandre.
 
 1. **Saját Ogre Wayland prefix** (Arch; egyszer):
 
@@ -89,8 +98,10 @@ Ahol a **`CMakeLists.txt`** van (pl. `~/assoc-ogre`), **ne** a `build/` mappáb�
 cd ~/assoc-ogre
 cmake -S . -B build
 cmake --build build --target meadow
-cd build && ./meadow
+./scripts/run-meadow-x11.sh
 ```
+
+*(Vagy `cd build && ./meadow` — ha assert: `run-meadow-x11.sh`.)*
 
 Ha véletlenül **`build/`** belül vagy: `cd ..` (egy szint fel).
 

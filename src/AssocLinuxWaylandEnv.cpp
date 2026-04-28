@@ -1,10 +1,8 @@
 /**
- * Pacman Ogre: X11 EGL only. SDL must use X11/XWayland, not native Wayland (externalWlDisplay assert).
+ * Pacman Ogre: X11 EGL path only — must not pass Wayland surfaces (externalWlDisplay assert).
  *
- * sdl2-compat + retained WAYLAND_* can still pick Wayland — we unset those, set both env names,
- * hint override, and SDL_Init(SDL_INIT_VIDEO) before Ogre so the subsystem locks to x11.
- *
- * Escape hatch: ASSOC_OGRE_WAYLAND_NATIVE=1 (own OGRE_USE_WAYLAND=ON build).
+ * Force x11: unset WAYLAND_*, hints, env, SDL_VideoQuit + SDL_VideoInit("x11") before Ogre.
+ * Fallback: SDL_Init(SDL_INIT_VIDEO). Native Wayland Ogre: ASSOC_OGRE_WAYLAND_NATIVE=1.
  */
 #include "AssocLinuxWaylandEnv.h"
 
@@ -31,23 +29,24 @@ void applyLinuxDisplayEnvForOgre()
     ::setenv("SDL_VIDEODRIVER", "x11", 1);
     ::setenv("SDL_VIDEO_DRIVER", "x11", 1);
 
-    if (SDL_WasInit(SDL_INIT_VIDEO))
-    {
-        SDL_QuitSubSystem(SDL_INIT_VIDEO);
-    }
+    SDL_VideoQuit();
 
-    if (SDL_Init(SDL_INIT_VIDEO) != 0)
+    int rc{SDL_VideoInit("x11")};
+    if (rc != 0)
     {
-        std::fprintf(stderr, "assoc-ogre: SDL_Init(SDL_INIT_VIDEO) failed: %s\n", SDL_GetError());
-        return;
+        std::fprintf(stderr, "assoc-ogre: SDL_VideoInit(\"x11\") failed: %s\n", SDL_GetError());
+        if (SDL_Init(SDL_INIT_VIDEO) != 0)
+        {
+            std::fprintf(stderr, "assoc-ogre: SDL_Init(SDL_INIT_VIDEO) fallback failed: %s\n", SDL_GetError());
+        }
     }
 
     char const* dr{SDL_GetCurrentVideoDriver()};
     if (dr && std::strcmp(dr, "x11") != 0)
     {
-        std::fprintf(
-            stderr,
-            "assoc-ogre: SDL video driver is '%s' (need x11 for pacman ogre). Try: pacman -S sdl2 && pacman -R sdl2-compat\n",
+        std::fprintf(stderr,
+            "assoc-ogre: SDL video driver is '%s' (pacman ogre needs x11). Run from repo: ./scripts/run-meadow-x11.sh "
+            "or: pacman -S sdl2 (remove sdl2-compat if possible).\n",
             dr);
     }
 }

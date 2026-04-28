@@ -74,15 +74,12 @@ cmake -S . -B build "${CMAKE_EXTRA[@]}"
 echo ">>> cmake build (meadow)"
 cmake --build build --target meadow
 
-# Pacman ogre: x11 + ne legyen Wayland környezet (sdl2-compat). Natív: ASSOC_OGRE_WAYLAND_NATIVE=1
+echo ">>> ./meadow"
 if [[ "${ASSOC_OGRE_WAYLAND_NATIVE:-}" != "1" ]]; then
-  if [[ -z "${SDL_VIDEODRIVER:-}" ]]; then
-    export SDL_VIDEODRIVER=x11
-  fi
-  unset WAYLAND_DISPLAY WAYLAND_SOCKET 2>/dev/null || true
-  echo ">>> SDL x11 + unset WAYLAND_* (distro Ogre). Natív Wayland Ogre: ASSOC_OGRE_WAYLAND_NATIVE=1"
+  echo ">>> pacman Ogre: Wayland env eltávolítva (exec env); distro + SDL compat workaround"
+  exec env -u WAYLAND_DISPLAY -u WAYLAND_SOCKET -u WAYLAND_DEBUG \
+    SDL_VIDEODRIVER="${SDL_VIDEODRIVER:-x11}" \
+    SDL_VIDEO_DRIVER="${SDL_VIDEO_DRIVER:-x11}" \
+    "$ROOT/build/meadow"
 fi
-
-echo ">>> ./meadow (working dir: build/)"
-cd "$ROOT/build"
-exec ./meadow
+exec "$ROOT/build/meadow"
