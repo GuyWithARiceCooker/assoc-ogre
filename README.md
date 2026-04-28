@@ -2,7 +2,30 @@
 
 Kis Ogre3D 14 (Bites) + RTShader demó: 3D jelenet, szöveg a jelenetben betűnként `ManualObject` + `SdkTrays/Caption` font, nem overlay.
 
-## Függőségek
+## Arch — egy copy-paste (függőség + repo + meadow futtatás)
+
+**Gyorsút:** bash shellben másold be **egyetlen blokkban** (sudo kérhet jelszót):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/cursor/meadow-scene-4764/scripts/paste-run-arch.sh | bash
+```
+
+Ez telepíti (`git`, `ogre`, `sdl2`, `cmake`, `ninja`, `gcc`), klónozza a repót `~/assoc-ogre`-ba (ha még nincs), checkout `cursor/meadow-scene-4764`, majd build + `./meadow`.
+
+**Ha már klónoztál máshova:**
+
+```bash
+export ASSOC_OGRE_HOME=/útvonal/amire/tetted
+curl -fsSL https://raw.githubusercontent.com/GuyWithARiceCooker/assoc-ogre/cursor/meadow-scene-4764/scripts/paste-run-arch.sh | bash
+```
+
+Ha CMake hiányolja a mintamédiát: előtte `export OGRE_SAMPLES_MEDIA=/útvonal/ogre/Samples/Media`.
+
+---
+
+## Részletes (kézi lépések)
+
+### Függőségek
 
 - Ogre3D 14.x telepítve (CMake `find_package(OGRE)` megtalálja a rendszeren vagy egy saját prefixben)
 - SDL2 (Arch: `sudo pacman -S ogre sdl2 cmake ninja gcc`)
